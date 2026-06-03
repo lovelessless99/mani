@@ -1,0 +1,40 @@
+.DS_Store
+.thumbs.db
+node_modules
+
+# Quasar core related directories
+.quasar
+/dist
+
+# Cordova related directories and files
+/src-cordova/node_modules
+/src-cordova/platforms
+
+# Capacitor related directories and files
+/src-capacitor/www
+/src-capacitor/android
+/src-capacitor/ios
+
+# BEX related directories and files
+/src-bex/www
+/src-bex/build
+
+# local .env files
+.env.local
+.env.*.local
+
+# Editor directories and files
+.idea
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# Firebase
+.firebase/
+firebase-debug.log
+.firebaserc
+
+# Coverage
+coverage/
