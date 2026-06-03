@@ -15,8 +15,11 @@ export const useProgressStore = defineStore('progress', () => {
 
   async function loadAllProgress(): Promise<void> {
     loading.value = true
-    await Promise.all(getAllSutras().map((s) => loadProgress(s.id)))
-    loading.value = false
+    try {
+      await Promise.all(getAllSutras().map((s) => loadProgress(s.id)))
+    } finally {
+      loading.value = false
+    }
   }
 
   async function markVolumeComplete(sutraId: string, volumeId: string): Promise<SutraProgress> {
