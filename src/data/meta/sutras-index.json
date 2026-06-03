@@ -1,0 +1,42 @@
+[
+  {
+    "id": "heart-sutra",
+    "titleZh": "般若波羅蜜多心經",
+    "titleEn": "Heart Sutra",
+    "totalVolumes": 1,
+    "storageType": "bundled",
+    "description": "最廣為流傳的般若經典，共260字。"
+  },
+  {
+    "id": "avatamsaka",
+    "titleZh": "大方廣佛華嚴經",
+    "titleEn": "Avatamsaka Sutra",
+    "totalVolumes": 80,
+    "storageType": "remote",
+    "description": "佛教重要經典，共八十卷，對應八十八佛與八十八星座。"
+  },
+  {
+    "id": "ksitigarbha",
+    "titleZh": "地藏菩薩本願經",
+    "titleEn": "Ksitigarbha Sutra",
+    "totalVolumes": 3,
+    "storageType": "remote",
+    "description": "宣說地藏菩薩本願的重要經典。"
+  },
+  {
+    "id": "shurangama",
+    "titleZh": "大佛頂首楞嚴經",
+    "titleEn": "Shurangama Sutra",
+    "totalVolumes": 10,
+    "storageType": "remote",
+    "description": "闡述楞嚴咒及修行法要的重要經典，共十卷。"
+  },
+  {
+    "id": "lotus",
+    "titleZh": "妙法蓮華經",
+    "titleEn": "Lotus Sutra",
+    "totalVolumes": 7,
+    "storageType": "remote",
+    "description": "大乘佛教重要經典，共七卷二十八品。"
+  }
+]
