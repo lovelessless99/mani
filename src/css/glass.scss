@@ -1,0 +1,55 @@
+:root {
+  // Base colors
+  --bg-deep: #0a0a1a;
+  --bg-surface: rgba(255, 255, 255, 0.06);
+  --bg-surface-hover: rgba(255, 255, 255, 0.10);
+
+  // Glass effect
+  --glass-blur: 20px;
+  --glass-border: 1px solid rgba(255, 255, 255, 0.12);
+  --glass-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+
+  // Gem accent colors
+  --gem-amethyst: #9b59b6;
+  --gem-sapphire: #2980b9;
+  --gem-emerald: #27ae60;
+  --gem-ruby: #c0392b;
+  --gem-amber: #f39c12;
+  --gem-aqua: #16a085;
+
+  // Text
+  --text-primary: rgba(255, 255, 255, 0.92);
+  --text-secondary: rgba(255, 255, 255, 0.55);
+
+  // Spacing
+  --radius-card: 16px;
+  --radius-sm: 8px;
+}
+
+body {
+  background: var(--bg-deep);
+  background-image:
+    radial-gradient(ellipse at 20% 20%, rgba(155, 89, 182, 0.15) 0%, transparent 50%),
+    radial-gradient(ellipse at 80% 80%, rgba(41, 128, 185, 0.12) 0%, transparent 50%);
+  min-height: 100vh;
+  color: var(--text-primary);
+}
+
+.glass {
+  background: var(--bg-surface);
+  backdrop-filter: blur(var(--glass-blur));
+  -webkit-backdrop-filter: blur(var(--glass-blur));
+  border: var(--glass-border);
+  border-radius: var(--radius-card);
+  box-shadow: var(--glass-shadow);
+}
+
+.glass-hover {
+  transition: background 0.2s ease;
+  &:hover {
+    background: var(--bg-surface-hover);
+  }
+}
+
+.text-primary { color: var(--text-primary); }
+.text-secondary { color: var(--text-secondary); }
