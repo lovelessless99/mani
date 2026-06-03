@@ -31,5 +31,8 @@ const activeTab = ref('home')
 <style scoped>
 .q-footer {
   background: transparent;
+  backdrop-filter: blur(24px) saturate(180%);
+  -webkit-backdrop-filter: blur(24px) saturate(180%);
+  border-top: 1px solid rgba(255, 255, 255, 0.12);
 }
 </style>

@@ -26,22 +26,50 @@
   --radius-sm: 8px;
 }
 
-body {
-  background: var(--bg-deep);
-  background-image:
-    radial-gradient(ellipse at 20% 20%, rgba(155, 89, 182, 0.15) 0%, transparent 50%),
-    radial-gradient(ellipse at 80% 80%, rgba(41, 128, 185, 0.12) 0%, transparent 50%);
+body,
+html {
+  background: #0a0a1a !important;
   min-height: 100vh;
   color: var(--text-primary);
 }
 
+// Fixed background layer — orbs that glass cards blur against
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(ellipse 60% 50% at 15% 20%, rgba(155, 89, 182, 0.45) 0%, transparent 70%),
+    radial-gradient(ellipse 50% 40% at 85% 75%, rgba(41, 128, 185, 0.38) 0%, transparent 70%),
+    radial-gradient(ellipse 40% 35% at 50% 90%, rgba(22, 160, 133, 0.25) 0%, transparent 60%);
+}
+
+// Make Quasar's layout/page transparent so our background shows through
+.q-layout,
+.q-page-container,
+.q-page {
+  background: transparent !important;
+  position: relative;
+  z-index: 1;
+}
+
+.q-footer {
+  background: transparent !important;
+  position: relative;
+  z-index: 2;
+}
+
 .glass {
-  background: var(--bg-surface);
-  backdrop-filter: blur(var(--glass-blur));
-  -webkit-backdrop-filter: blur(var(--glass-blur));
-  border: var(--glass-border);
+  background: rgba(255, 255, 255, 0.07);
+  backdrop-filter: blur(24px) saturate(180%);
+  -webkit-backdrop-filter: blur(24px) saturate(180%);
+  border: 1px solid rgba(255, 255, 255, 0.15);
   border-radius: var(--radius-card);
-  box-shadow: var(--glass-shadow);
+  box-shadow:
+    0 8px 32px rgba(0, 0, 0, 0.45),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1);
 }
 
 .glass-hover {
