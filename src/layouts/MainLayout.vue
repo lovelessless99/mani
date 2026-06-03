@@ -1,50 +1,35 @@
 <template>
-  <q-layout view="lHh Lpr lFf">
-    <q-header elevated>
-      <q-toolbar>
-        <q-btn
-          flat
-          dense
-          round
-          icon="menu"
-          aria-label="Menu"
-          @click="toggleLeftDrawer"
-        />
-
-        <q-toolbar-title>
-          Buddhist Scripture App
-        </q-toolbar-title>
-
-        <div>Quasar v{{ $q.version }}</div>
-      </q-toolbar>
-    </q-header>
-
-    <q-drawer
-      v-model="leftDrawerOpen"
-      show-if-above
-      bordered
-    >
-      <q-list>
-        <q-item-label
-          header
-        >
-          Navigation
-        </q-item-label>
-      </q-list>
-    </q-drawer>
-
+  <q-layout view="lHh lpr lFf">
     <q-page-container>
       <router-view />
     </q-page-container>
+
+    <q-footer>
+      <q-tabs
+        v-model="activeTab"
+        class="glass"
+        dense
+        active-color="white"
+        indicator-color="transparent"
+        style="border-top: var(--glass-border)"
+      >
+        <q-route-tab name="home" to="/" exact icon="home" label="今日" />
+        <q-route-tab name="library" to="/library" icon="menu_book" label="誦讀" />
+        <q-route-tab name="practice" to="/practice" icon="psychology" label="練習" />
+        <q-route-tab name="collection" to="/collection" icon="diamond" label="收藏" />
+        <q-route-tab name="more" to="/more" icon="more_horiz" label="更多" />
+      </q-tabs>
+    </q-footer>
   </q-layout>
 </template>
 
 <script setup lang="ts">
 import { ref } from 'vue'
-
-const leftDrawerOpen = ref(false)
-
-function toggleLeftDrawer () {
-  leftDrawerOpen.value = !leftDrawerOpen.value
-}
+const activeTab = ref('home')
 </script>
+
+<style scoped>
+.q-footer {
+  background: transparent;
+}
+</style>
