@@ -5,7 +5,6 @@ const { configure } = require('quasar/wrappers')
 module.exports = configure(function (/* ctx */) {
   return {
     eslint: {
-      fix: true,
       warnings: true,
       errors: true,
     },
