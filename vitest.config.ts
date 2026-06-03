@@ -6,6 +6,7 @@ import { fileURLToPath } from 'node:url'
 
 export default defineConfig({
   test: {
+    passWithNoTests: true,
     environment: 'happy-dom',
     setupFiles: 'test/vitest/setup-file.ts',
     include: [
