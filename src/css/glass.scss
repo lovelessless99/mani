@@ -18,8 +18,8 @@
   --gem-aqua: #16a085;
 
   // Text
-  --text-primary: rgba(255, 255, 255, 0.92);
-  --text-secondary: rgba(255, 255, 255, 0.55);
+  --text-primary: #ffffff;
+  --text-secondary: rgba(255, 255, 255, 0.75);
 
   // Spacing
   --radius-card: 16px;
@@ -31,6 +31,8 @@ html {
   background: #0a0a1a !important;
   min-height: 100vh;
   color: var(--text-primary);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 // Fixed background layer — orbs that glass cards blur against
@@ -79,5 +81,26 @@ body::before {
   }
 }
 
-.text-primary { color: var(--text-primary); }
-.text-secondary { color: var(--text-secondary); }
+.text-primary {
+  color: var(--text-primary) !important;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
+}
+.text-secondary {
+  color: var(--text-secondary) !important;
+}
+
+// Quasar overrides — ensure text stays white in dark cards
+.q-item__label,
+.q-item__label--caption,
+.q-tab__label {
+  color: inherit;
+}
+
+// Card title text
+.text-subtitle1,
+.text-subtitle2,
+.text-caption,
+.text-h5,
+.text-h6 {
+  color: inherit;
+}
