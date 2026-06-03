@@ -11,6 +11,8 @@ export default defineConfig({
     include: [
       // Matches vitest tests in any subfolder of 'src' or into 'test/vitest/__tests__'
       'src/**/*.vitest.{ts,js}',
+      'src/**/*.{spec,test}.{ts,js}',
+      'tests/**/*.{spec,test}.{ts,js}',
       'test/vitest/__tests__/**/*.{ts,js}',
     ],
   },

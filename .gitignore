@@ -20,6 +20,8 @@ node_modules
 /src-bex/build
 
 # local .env files
+.env
+.env.production
 .env.local
 .env.*.local
 

@@ -26,7 +26,7 @@
     "src/**/*.tsx",
     "src/**/*.vue",
     "src-pwa/**/*.ts",
-    "quasar.config.ts"
+    "quasar.config.js"
   ],
   "exclude": [
     "node_modules"

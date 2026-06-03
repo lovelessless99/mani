@@ -28,7 +28,14 @@
     "sass": "^1.100.0",
     "typescript": "^6.0.3",
     "vite-tsconfig-paths": "^6.1.1",
-    "vitest": "^4.1.8"
+    "vitest": "^4.1.8",
+    "workbox-build": "^7.4.1",
+    "workbox-cacheable-response": "^7.4.1",
+    "workbox-core": "^7.4.1",
+    "workbox-expiration": "^7.4.1",
+    "workbox-precaching": "^7.4.1",
+    "workbox-routing": "^7.4.1",
+    "workbox-strategies": "^7.4.1"
   },
   "dependencies": {
     "@quasar/extras": "^2.0.0",
@@ -36,9 +43,9 @@
     "@vueuse/motion": "^3.0.3",
     "firebase": "^12.14.0",
     "idb": "^8.0.3",
-    "pinia": "^3.0.4",
+    "pinia": "^2.3.1",
     "register-service-worker": "^1.7.2",
     "vue": "^3.5.35",
-    "vue-router": "^5.1.0"
+    "vue-router": "^4.6.4"
   }
 }
