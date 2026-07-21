@@ -4,14 +4,16 @@
     :class="{ 'gem-card--locked': !gem, 'gem-card--unlocked': !!gem }"
     @click="gem && $emit('click', gem)"
   >
+    <!-- CSS gem preview — no WebGL needed in the grid -->
     <div v-if="gem" class="gem-card__preview">
-      <TresCanvas :alpha="true" :antialias="true" style="width:100%;height:100%">
-        <TresPerspectiveCamera :position="[0, 0, 3]" :fov="50" />
-        <GemMesh :params="gem.params" :scale="1" :auto-rotate="true" />
-        <TresAmbientLight :intensity="0.5" />
-        <TresDirectionalLight :position="[3, 3, 3]" :intensity="1.2" />
-        <TresPointLight :position="[0, 2, 2]" :intensity="2" :color="gem.params.colorHex" :distance="6" />
-      </TresCanvas>
+      <div
+        class="gem-orb"
+        :style="{
+          '--c': gem.params.colorHex,
+          '--g': gem.params.colorHex + '99',
+        }"
+      />
+      <div class="gem-sparkle" />
     </div>
 
     <div v-else class="gem-card__locked-icon">
@@ -28,8 +30,6 @@
 
 <script setup lang="ts">
 import { computed } from 'vue'
-import { TresCanvas } from '@tresjs/core'
-import GemMesh from './GemMesh.vue'
 import type { GemRecord, BuddhaInfo } from 'src/types/gem'
 import buddhasData from 'src/data/meta/buddhas-88.json'
 
@@ -74,6 +74,53 @@ const buddhaName = computed<string | undefined>(() => {
 .gem-card__preview {
   width: 70px;
   height: 70px;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.gem-orb {
+  width: 54px;
+  height: 54px;
+  border-radius: 50%;
+  background:
+    radial-gradient(circle at 35% 28%, rgba(255,255,255,0.7) 0%, transparent 42%),
+    radial-gradient(circle at 68% 72%, rgba(255,255,255,0.18) 0%, transparent 38%),
+    radial-gradient(circle, var(--c) 0%, color-mix(in srgb, var(--c) 40%, #000) 100%);
+  box-shadow:
+    0 0 18px var(--g),
+    0 0 6px var(--g),
+    inset 0 0 10px rgba(255,255,255,0.22);
+  animation: gem-float 3.2s ease-in-out infinite, gem-glow 2.4s ease-in-out infinite;
+}
+
+.gem-sparkle {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  width: 8px;
+  height: 8px;
+  background: white;
+  clip-path: polygon(50% 0%, 61% 35%, 98% 35%, 68% 57%, 79% 91%, 50% 70%, 21% 91%, 32% 57%, 2% 35%, 39% 35%);
+  animation: sparkle-spin 4s linear infinite;
+  opacity: 0.85;
+}
+
+@keyframes gem-float {
+  0%, 100% { transform: translateY(0) rotate(0deg); }
+  50%       { transform: translateY(-3px) rotate(8deg); }
+}
+
+@keyframes gem-glow {
+  0%, 100% { filter: brightness(1); }
+  50%       { filter: brightness(1.35) saturate(1.2); }
+}
+
+@keyframes sparkle-spin {
+  from { transform: rotate(0deg) scale(1); opacity: 0.85; }
+  50%  { transform: rotate(180deg) scale(0.5); opacity: 0.4; }
+  to   { transform: rotate(360deg) scale(1); opacity: 0.85; }
 }
 
 .gem-card__locked-icon {
