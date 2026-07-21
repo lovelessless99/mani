@@ -18,16 +18,14 @@
         </div>
 
         <div class="ceremony-info" :class="{ 'ceremony-info--visible': infoVisible }">
-          <div class="text-h6 text-primary q-mb-xs">寶石解鎖！</div>
-          <div v-if="buddhaName" class="text-subtitle1 q-mt-xs" :style="{ color: gem.params.colorHex }">
+          <p class="ceremony-eyebrow">寶石解鎖</p>
+          <h2 v-if="buddhaName" class="ceremony-name" :style="{ color: gem.params.colorHex }">
             {{ buddhaName }}
-          </div>
-          <div class="text-caption text-secondary q-mt-xs">
-            {{ gem.params.geometry }} 切割
-          </div>
-          <div class="text-caption text-secondary q-mt-lg tap-hint">
+          </h2>
+          <p class="ceremony-cut">{{ gem.params.geometry }} 切割</p>
+          <p class="ceremony-hint tap-hint">
             {{ constellationName ? '點擊看星座' : '點擊繼續' }}
-          </div>
+          </p>
         </div>
       </template>
 
@@ -70,12 +68,12 @@
 
           <!-- Info -->
           <div class="constellation-info">
-            <div class="text-h5 text-primary">{{ constellationName }}</div>
-            <div class="text-subtitle2 text-secondary q-mt-xs">{{ constellationNameEn }}</div>
-            <div class="text-caption q-mt-sm" :style="{ color: gem.params.colorHex }">
+            <h2 class="ceremony-name ceremony-name--lg">{{ constellationName }}</h2>
+            <p class="ceremony-name-en">{{ constellationNameEn }}</p>
+            <p class="ceremony-link" :style="{ color: gem.params.colorHex }">
               {{ buddhaName }} · 對應星座
-            </div>
-            <div class="text-caption text-secondary q-mt-lg">點擊繼續</div>
+            </p>
+            <p class="ceremony-hint">點擊繼續</p>
           </div>
         </div>
       </template>
@@ -259,6 +257,56 @@ function bgStarStyle(n: number) {
 .ceremony-info--visible {
   opacity: 1;
   transform: translateY(0);
+}
+
+/* — Ceremony typography ——————————————————— */
+.ceremony-eyebrow {
+  font-size: var(--text-micro);
+  font-weight: 500;
+  letter-spacing: 0.32em;
+  text-indent: 0.32em;
+  color: var(--text-faint);
+  text-transform: uppercase;
+}
+
+.ceremony-name {
+  margin-top: var(--s2);
+  font-size: var(--text-title);
+  font-weight: 300;
+  letter-spacing: 0.14em;
+  line-height: 1.4;
+}
+
+.ceremony-name--lg {
+  font-size: var(--text-display);
+  color: var(--text);
+}
+
+.ceremony-name-en {
+  margin-top: var(--s1);
+  font-size: var(--text-caption);
+  letter-spacing: 0.1em;
+  color: var(--text-faint);
+}
+
+.ceremony-cut {
+  margin-top: var(--s2);
+  font-size: var(--text-micro);
+  letter-spacing: 0.16em;
+  color: var(--text-faint);
+}
+
+.ceremony-link {
+  margin-top: var(--s3);
+  font-size: var(--text-caption);
+  letter-spacing: 0.08em;
+}
+
+.ceremony-hint {
+  margin-top: var(--s6);
+  font-size: var(--text-micro);
+  letter-spacing: 0.2em;
+  color: var(--text-faint);
 }
 
 .tap-hint {

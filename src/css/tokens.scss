@@ -1,0 +1,83 @@
+/* ============================================================
+   Design tokens — 深空琉璃 (Deep Space Glass)
+   ============================================================
+   One source of truth. Components never hard-code a colour,
+   radius, or duration; they reference a token here.
+   ============================================================ */
+
+:root {
+  /* --- Surface ------------------------------------------------ */
+  --bg: #0a0a0f;
+  --bg-elevated: #101018;
+
+  /* Glass layers. Kept deliberately faint — depth comes from the
+     background glow showing through, not from opaque fills. */
+  --glass-1: rgba(255, 255, 255, 0.045); /* resting card    */
+  --glass-2: rgba(255, 255, 255, 0.075); /* hovered / active */
+  --glass-3: rgba(255, 255, 255, 0.11); /* pressed          */
+
+  --hairline: rgba(255, 255, 255, 0.08);
+  --hairline-strong: rgba(255, 255, 255, 0.14);
+
+  --blur: 24px;
+  --blur-heavy: 40px;
+
+  /* --- Text --------------------------------------------------- */
+  --text: #ffffff;
+  --text-dim: rgba(255, 255, 255, 0.55);
+  --text-faint: rgba(255, 255, 255, 0.32);
+
+  /* --- Gem accents -------------------------------------------- */
+  --amethyst: #a78bfa;
+  --sapphire: #60a5fa;
+  --emerald: #34d399;
+  --ruby: #fb7185;
+  --amber: #fbbf24;
+  --aqua: #2dd4bf;
+
+  --accent: var(--amethyst);
+
+  /* --- Type --------------------------------------------------- */
+  --font-sans: 'Noto Sans TC', -apple-system, BlinkMacSystemFont, 'Segoe UI',
+    sans-serif;
+  --font-serif: 'Noto Serif TC', 'Noto Serif CJK TC', serif;
+
+  --text-display: 1.75rem; /* 28px — page titles      */
+  --text-title: 1.25rem; /* 20px — section titles   */
+  --text-body: 0.9375rem; /* 15px — default          */
+  --text-caption: 0.8125rem; /* 13px — supporting       */
+  --text-micro: 0.6875rem; /* 11px — labels, tabs     */
+
+  /* --- Space (4px base) --------------------------------------- */
+  --s1: 0.25rem;
+  --s2: 0.5rem;
+  --s3: 0.75rem;
+  --s4: 1rem;
+  --s5: 1.5rem;
+  --s6: 2rem;
+  --s7: 3rem;
+
+  /* --- Radius ------------------------------------------------- */
+  --r-sm: 10px;
+  --r-md: 16px;
+  --r-lg: 22px;
+  --r-full: 999px;
+
+  /* --- Elevation ---------------------------------------------- */
+  --shadow-1: 0 1px 2px rgba(0, 0, 0, 0.3);
+  --shadow-2: 0 8px 24px -8px rgba(0, 0, 0, 0.6);
+  --shadow-3: 0 24px 64px -16px rgba(0, 0, 0, 0.75);
+
+  /* --- Motion ------------------------------------------------- */
+  --ease: cubic-bezier(0.32, 0.72, 0, 1);
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --fast: 140ms;
+  --base: 260ms;
+  --slow: 480ms;
+
+  /* --- Layout ------------------------------------------------- */
+  --tabbar-h: 56px;
+  --content-max: 34rem;
+  --safe-b: env(safe-area-inset-bottom, 0px);
+  --safe-t: env(safe-area-inset-top, 0px);
+}

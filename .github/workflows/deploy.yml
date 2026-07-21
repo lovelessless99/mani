@@ -21,7 +21,7 @@ jobs:
         run: npx vitest run --config vitest.config.mts
 
       - name: Build
-        run: npx quasar build
+        run: npm run build
         env:
           VITE_FIREBASE_API_KEY: ${{ secrets.VITE_FIREBASE_API_KEY }}
           VITE_FIREBASE_AUTH_DOMAIN: ${{ secrets.VITE_FIREBASE_AUTH_DOMAIN }}

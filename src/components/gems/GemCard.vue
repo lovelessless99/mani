@@ -17,7 +17,7 @@
     </div>
 
     <div v-else class="gem-card__locked-icon">
-      <q-icon name="diamond" size="24px" color="grey-7" />
+      <AppIcon name="gem" :size="24" />
     </div>
 
     <div class="gem-card__label">
@@ -30,6 +30,7 @@
 
 <script setup lang="ts">
 import { computed } from 'vue'
+import AppIcon from 'src/components/ui/AppIcon.vue'
 import type { GemRecord, BuddhaInfo } from 'src/types/gem'
 import buddhasData from 'src/data/meta/buddhas-88.json'
 
@@ -49,31 +50,40 @@ const buddhaName = computed<string | undefined>(() => {
 
 <style scoped>
 .gem-card {
-  width: 88px;
-  height: 110px;
+  width: 100%;
+  aspect-ratio: 4 / 5;
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: space-between;
-  padding: 8px 4px;
+  justify-content: center;
+  gap: var(--s2);
+  padding: var(--s2) 4px;
   cursor: pointer;
-  transition: transform 0.2s ease;
-  border-radius: 12px;
+  border-radius: var(--r-sm);
+  transition:
+    transform var(--fast) var(--ease),
+    background var(--fast) var(--ease);
 }
 
 .gem-card--unlocked:hover {
-  transform: scale(1.05);
+  transform: translateY(-2px) scale(1.04);
+  background: var(--glass-2);
+}
+
+.gem-card--unlocked:active {
+  transform: scale(0.97);
 }
 
 .gem-card--locked {
-  opacity: 0.4;
+  opacity: 0.32;
   cursor: default;
-  filter: grayscale(80%);
+  box-shadow: none;
+  color: var(--text-faint);
 }
 
 .gem-card__preview {
-  width: 70px;
-  height: 70px;
+  width: 56px;
+  height: 56px;
   position: relative;
   display: flex;
   align-items: center;
@@ -81,8 +91,8 @@ const buddhaName = computed<string | undefined>(() => {
 }
 
 .gem-orb {
-  width: 54px;
-  height: 54px;
+  width: 44px;
+  height: 44px;
   border-radius: 50%;
   background:
     radial-gradient(circle at 35% 28%, rgba(255,255,255,0.7) 0%, transparent 42%),
@@ -124,19 +134,21 @@ const buddhaName = computed<string | undefined>(() => {
 }
 
 .gem-card__locked-icon {
-  width: 70px;
-  height: 70px;
+  width: 56px;
+  height: 56px;
   display: flex;
   align-items: center;
   justify-content: center;
 }
 
 .gem-card__label {
-  color: var(--text-secondary);
+  color: var(--text-dim);
   text-align: center;
   font-size: 10px;
+  letter-spacing: 0.04em;
   line-height: 1.2;
-  max-width: 80px;
+  max-width: 100%;
+  padding: 0 2px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;

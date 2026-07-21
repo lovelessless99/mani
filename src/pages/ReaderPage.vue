@@ -1,71 +1,96 @@
 <template>
-  <q-page>
-    <q-bar class="glass" style="position: sticky; top: 0; z-index: 10">
-      <q-btn flat round icon="arrow_back" color="white" @click="$router.back()" />
-      <div class="text-subtitle1 text-primary q-ml-sm">{{ volume?.titleZh ?? '載入中...' }}</div>
-      <q-space />
-      <q-btn
-        v-if="volume"
-        flat round
-        :icon="recitedThisSession ? 'check_circle' : 'check_circle_outline'"
-        :color="recitedThisSession ? 'green-4' : 'white'"
-        @click="markComplete"
-        :loading="saving"
+  <main class="reader">
+    <!-- Floating chrome — stays out of the text's way -------- -->
+    <header class="bar">
+      <AppButton
+        icon="back"
+        icon-only
+        variant="ghost"
+        aria-label="返回"
+        @click="router.back()"
       />
-    </q-bar>
 
-    <div v-if="loading" class="flex flex-center q-pa-xl">
-      <q-spinner-dots size="50px" color="purple-4" />
+      <h1 class="bar__title">{{ volume?.titleZh ?? '載入中' }}</h1>
+
+      <AppButton
+        v-if="volume"
+        :icon="recitedThisSession ? 'checkCircle' : 'circle'"
+        icon-only
+        :variant="recitedThisSession ? 'accent' : 'ghost'"
+        :loading="saving"
+        aria-label="標記完成"
+        :class="{ 'bar__done': recitedThisSession }"
+        @click="markComplete"
+      />
+      <span v-else class="bar__spacer" />
+    </header>
+
+    <!-- Sutra text ------------------------------------------- -->
+    <div v-if="loading" class="reader__loading">
+      <AppSpinner :size="34" />
     </div>
 
-    <div v-else-if="volume" class="reader-container q-pa-lg">
-      <div class="vertical-text-wrapper">
-        <template v-for="(block, i) in volume.blocks" :key="i">
-          <div :class="['text-block', `text-block--${block.type}`]">{{ block.text }}</div>
-        </template>
+    <div v-else-if="volume" class="scroll">
+      <article class="vtext">
+        <p
+          v-for="(block, i) in volume.blocks"
+          :key="i"
+          :class="['vtext__block', `vtext__block--${block.type}`]"
+        >
+          {{ block.text }}
+        </p>
+      </article>
+    </div>
+
+    <div v-else class="reader__loading">
+      <p class="empty">無法載入此卷</p>
+    </div>
+
+    <!-- Repeat-recitation confirmation ------------------------ -->
+    <AppSheet v-model="showCompleteDialog">
+      <div class="done">
+        <AppIcon name="sparkle" :size="40" class="done__icon" />
+        <h2 class="done__title">回向完成</h2>
+        <p class="done__body">
+          第 {{ volumeIdDisplay }} 卷已記錄<br />
+          累計誦讀 <span class="tnum">{{ newCount }}</span> 遍
+        </p>
+        <AppButton variant="glass" block @click="showCompleteDialog = false">
+          繼續
+        </AppButton>
       </div>
-    </div>
+    </AppSheet>
 
-    <!-- Simple dialog for repeat recitations -->
-    <q-dialog v-model="showCompleteDialog">
-      <q-card class="glass text-center q-pa-lg">
-        <q-icon name="auto_awesome" color="amber-4" size="48px" />
-        <div class="text-h6 text-primary q-mt-sm">回向完成</div>
-        <div class="text-secondary q-mt-xs">
-          第 {{ volumeIdDisplay }} 卷已記錄<br />累計誦讀 {{ newCount }} 遍
-        </div>
-        <q-btn flat class="q-mt-md" color="purple-3" label="繼續" @click="showCompleteDialog = false" />
-      </q-card>
-    </q-dialog>
+    <!-- Gem unlock ceremony (first completion) ---------------- -->
+    <UnlockCeremony :gem="gemStore.pendingUnlock" @dismiss="onCeremonyDismiss" />
 
-    <!-- Gem unlock ceremony (first completion) -->
-    <UnlockCeremony
-      :gem="gemStore.pendingUnlock"
-      @dismiss="onCeremonyDismiss"
-    />
-
-    <!-- Milestone overlay (sutra complete / 10 / 100) -->
+    <!-- Milestone (圓滿一部 / 十部 / 百部) -------------------- -->
     <MilestoneOverlay
       :visible="showMilestone"
       :type="milestoneType"
       :sutra-title="volume?.titleZh"
       @dismiss="showMilestone = false"
     />
-  </q-page>
+  </main>
 </template>
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
+import AppButton from 'src/components/ui/AppButton.vue'
+import AppIcon from 'src/components/ui/AppIcon.vue'
+import AppSpinner from 'src/components/ui/AppSpinner.vue'
+import AppSheet from 'src/components/ui/AppSheet.vue'
+import UnlockCeremony from 'src/components/gems/UnlockCeremony.vue'
+import MilestoneOverlay from 'src/components/gems/MilestoneOverlay.vue'
 import { loadVolume } from 'src/services/sutraService'
 import { useProgressStore } from 'src/stores/progressStore'
 import { useGemStore } from 'src/stores/gemStore'
-import UnlockCeremony from 'src/components/gems/UnlockCeremony.vue'
-import MilestoneOverlay from 'src/components/gems/MilestoneOverlay.vue'
 import type { SutraVolume } from 'src/types/sutra'
 import avatamsakaMap from 'src/data/meta/avatamsaka-gem-map.json'
 
 const route = useRoute()
+const router = useRouter()
 const progressStore = useProgressStore()
 const gemStore = useGemStore()
 
@@ -79,9 +104,11 @@ const recitedThisSession = ref(false)
 const showCompleteDialog = ref(false)
 const newCount = ref(0)
 const showMilestone = ref(false)
-const milestoneType = ref<'sutra_complete' | 'ten_complete' | 'hundred_complete'>('sutra_complete')
+const milestoneType = ref<'sutra_complete' | 'ten_complete' | 'hundred_complete'>(
+  'sutra_complete'
+)
 
-const volumeIdDisplay = computed(() => parseInt(volumeId).toString())
+const volumeIdDisplay = computed(() => parseInt(volumeId, 10).toString())
 
 onMounted(async () => {
   try {
@@ -106,7 +133,9 @@ async function markComplete() {
         sourceRef: `${sutraId}/${volumeId}`,
       }
       if (sutraId === 'avatamsaka') {
-        const mapEntry = (avatamsakaMap as Record<string, { buddhaId: string; constellationId: string }>)[volumeId]
+        const mapEntry = (
+          avatamsakaMap as Record<string, { buddhaId: string; constellationId: string }>
+        )[volumeId]
         if (mapEntry) {
           gemInput.buddhaId = mapEntry.buddhaId
           gemInput.constellationId = mapEntry.constellationId
@@ -115,10 +144,10 @@ async function markComplete() {
       await gemStore.earnGem(gemInput)
       // UnlockCeremony shows via gemStore.pendingUnlock reactivity
 
-      // Check for sutra completion milestone
       if (updated.isFullyComplete) {
-        const completedCount = Object.values(progressStore.progressMap)
-          .filter((p) => p.isFullyComplete).length
+        const completedCount = Object.values(progressStore.progressMap).filter(
+          (p) => p.isFullyComplete
+        ).length
         if (completedCount >= 100) {
           milestoneType.value = 'hundred_complete'
         } else if (completedCount >= 10) {
@@ -126,7 +155,9 @@ async function markComplete() {
         } else {
           milestoneType.value = 'sutra_complete'
         }
-        setTimeout(() => { showMilestone.value = true }, 2000)
+        setTimeout(() => {
+          showMilestone.value = true
+        }, 2000)
       }
     } else {
       showCompleteDialog.value = true
@@ -142,31 +173,117 @@ function onCeremonyDismiss() {
 </script>
 
 <style scoped>
-.reader-container {
-  min-height: calc(100vh - 50px);
-  overflow-x: auto;
+.reader {
+  height: 100vh;
+  height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
 }
 
-.vertical-text-wrapper {
+/* — Top bar ———————————————————————————————— */
+.bar {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: var(--s2);
+  padding: calc(var(--safe-t) + var(--s2)) var(--s3) var(--s2);
+  background: rgba(10, 10, 15, 0.5);
+  backdrop-filter: blur(var(--blur)) saturate(180%);
+  -webkit-backdrop-filter: blur(var(--blur)) saturate(180%);
+  border-bottom: 1px solid var(--hairline);
+}
+
+.bar__title {
+  flex: 1;
+  min-width: 0;
+  font-size: var(--text-body);
+  font-weight: 300;
+  letter-spacing: 0.1em;
+  text-align: center;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.bar__spacer {
+  width: 40px;
+}
+
+.bar__done {
+  color: var(--emerald);
+}
+
+/* — Text ——————————————————————————————————— */
+.reader__loading {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.scroll {
+  flex: 1;
+  overflow-x: auto;
+  overflow-y: hidden;
+  overscroll-behavior-x: contain;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Vertical right-to-left, the traditional setting for sutra text.
+   The wrapper scrolls horizontally; columns flow leftward as you read. */
+.vtext {
   writing-mode: vertical-rl;
   text-orientation: mixed;
-  height: calc(100vh - 120px);
+  height: 100%;
   display: flex;
   flex-direction: row-reverse;
-  gap: 1.5rem;
-  font-size: 18px;
-  line-height: 2;
-  color: var(--text-primary);
-  font-family: 'Noto Serif TC', 'Noto Serif CJK TC', serif;
+  gap: var(--s5);
+  padding: var(--s6) var(--s5);
+  font-family: var(--font-serif);
+  font-size: 1.125rem;
+  font-weight: 400;
+  line-height: 2.1;
+  letter-spacing: 0.14em;
 }
 
-.text-block--heading {
-  font-weight: bold;
-  font-size: 20px;
-  color: var(--gem-amber);
+.vtext__block {
+  max-height: 100%;
 }
 
-.text-block--verse {
-  color: var(--gem-amethyst);
+.vtext__block--heading {
+  font-size: 1.3rem;
+  font-weight: 600;
+  letter-spacing: 0.24em;
+  color: var(--amber);
+}
+
+.vtext__block--verse {
+  color: var(--amethyst);
+}
+
+/* — Completion sheet ——————————————————————— */
+.done {
+  padding: var(--s2) 0 var(--s2);
+  text-align: center;
+}
+
+.done__icon {
+  margin: 0 auto var(--s3);
+  color: var(--amber);
+  filter: drop-shadow(0 0 12px rgba(251, 191, 36, 0.5));
+}
+
+.done__title {
+  font-size: var(--text-title);
+  font-weight: 300;
+  letter-spacing: 0.16em;
+}
+
+.done__body {
+  margin: var(--s2) 0 var(--s5);
+  font-size: var(--text-caption);
+  color: var(--text-dim);
+  line-height: 1.9;
 }
 </style>

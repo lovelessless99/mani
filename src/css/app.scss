@@ -1,10 +1,103 @@
-@import './glass.scss';
+@use './tokens.scss';
+@use './base.scss';
 
-// app global css / scss goes here
+/* ============================================================
+   Shared primitives
+   Only patterns used on 3+ screens live here; anything narrower
+   stays scoped to its component.
+   ============================================================ */
 
-// Glassmorphism base variables
-:root {
-  --glass-bg: rgba(255, 255, 255, 0.08);
-  --primary-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+/* --- Glass surface ------------------------------------------ */
+.glass {
+  background: var(--glass-1);
+  backdrop-filter: blur(var(--blur)) saturate(160%);
+  -webkit-backdrop-filter: blur(var(--blur)) saturate(160%);
+  border: 1px solid var(--hairline);
+  border-radius: var(--r-md);
+  /* A single inset highlight along the top edge reads as a lit
+     bevel and does more for depth than a heavy outer shadow. */
+  box-shadow:
+    var(--shadow-2),
+    inset 0 1px 0 rgba(255, 255, 255, 0.06);
 }
 
+/* Fallback for browsers without backdrop-filter */
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .glass {
+    background: rgba(28, 28, 40, 0.9);
+  }
+}
+
+/* --- Page shell --------------------------------------------- */
+.page {
+  max-width: var(--content-max);
+  margin: 0 auto;
+  padding: calc(var(--safe-t) + var(--s5)) var(--s4)
+    calc(var(--tabbar-h) + var(--safe-b) + var(--s6));
+}
+
+.page-title {
+  font-size: var(--text-display);
+  font-weight: 300;
+  letter-spacing: 0.06em;
+  line-height: 1.3;
+}
+
+.page-sub {
+  margin-top: var(--s1);
+  font-size: var(--text-caption);
+  color: var(--text-dim);
+  letter-spacing: 0.04em;
+}
+
+/* --- Section ------------------------------------------------- */
+.section-label {
+  font-size: var(--text-micro);
+  font-weight: 500;
+  letter-spacing: 0.16em;
+  color: var(--text-faint);
+  text-transform: uppercase;
+}
+
+/* --- Text helpers -------------------------------------------- */
+.t-dim {
+  color: var(--text-dim);
+}
+.t-faint {
+  color: var(--text-faint);
+}
+.t-serif {
+  font-family: var(--font-serif);
+}
+
+/* --- Stack: vertical rhythm without per-child margins -------- */
+.stack > * + * {
+  margin-top: var(--s3);
+}
+.stack-lg > * + * {
+  margin-top: var(--s5);
+}
+
+/* --- Empty state --------------------------------------------- */
+.empty {
+  padding: var(--s6) var(--s4);
+  text-align: center;
+  color: var(--text-faint);
+  font-size: var(--text-caption);
+  letter-spacing: 0.05em;
+}
+
+/* --- Route transition ---------------------------------------- */
+.fade-enter-active,
+.fade-leave-active {
+  transition:
+    opacity var(--base) var(--ease),
+    transform var(--base) var(--ease);
+}
+.fade-enter-from {
+  opacity: 0;
+  transform: translateY(6px);
+}
+.fade-leave-to {
+  opacity: 0;
+}

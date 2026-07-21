@@ -19,11 +19,16 @@
       </svg>
 
       <div class="milestone-content">
-        <q-icon name="auto_awesome" :color="accentColorName" size="52px" class="milestone-icon" />
-        <div class="text-h5 text-primary q-mt-md">{{ title }}</div>
-        <div class="text-subtitle2 q-mt-xs" :style="{ color: accentColor }">{{ subtitle }}</div>
-        <div class="text-caption text-secondary q-mt-sm" style="max-width:280px;margin:0 auto">{{ body }}</div>
-        <div class="text-caption text-secondary q-mt-xl">點擊繼續</div>
+        <AppIcon
+          name="sparkle"
+          :size="52"
+          class="milestone-icon"
+          :style="{ color: accentColor }"
+        />
+        <h2 class="milestone-title">{{ title }}</h2>
+        <p class="milestone-subtitle" :style="{ color: accentColor }">{{ subtitle }}</p>
+        <p class="milestone-body">{{ body }}</p>
+        <p class="milestone-hint">點擊繼續</p>
       </div>
     </div>
   </Transition>
@@ -31,6 +36,7 @@
 
 <script setup lang="ts">
 import { computed } from 'vue'
+import AppIcon from 'src/components/ui/AppIcon.vue'
 
 type MilestoneType = 'sutra_complete' | 'ten_complete' | 'hundred_complete'
 
@@ -43,15 +49,9 @@ const props = defineProps<{
 defineEmits<{ dismiss: [] }>()
 
 const accentColor = computed(() => {
-  if (props.type === 'ten_complete') return '#2ecc71'
-  if (props.type === 'hundred_complete') return '#9b59b6'
-  return '#f39c12'
-})
-
-const accentColorName = computed(() => {
-  if (props.type === 'ten_complete') return 'green-4'
-  if (props.type === 'hundred_complete') return 'purple-4'
-  return 'amber-4'
+  if (props.type === 'ten_complete') return '#34d399'
+  if (props.type === 'hundred_complete') return '#a78bfa'
+  return '#fbbf24'
 })
 
 const title = computed(() => {
@@ -114,12 +114,42 @@ const constellationLines = computed(() => {
 
 .milestone-content {
   text-align: center;
-  padding: 0 32px;
+  padding: 0 var(--s6);
   margin-top: 180px;
 }
 
 .milestone-icon {
+  margin: 0 auto;
   animation: pulse-scale 1.8s ease-in-out infinite;
+}
+
+.milestone-title {
+  margin-top: var(--s4);
+  font-size: var(--text-display);
+  font-weight: 300;
+  letter-spacing: 0.16em;
+}
+
+.milestone-subtitle {
+  margin-top: var(--s2);
+  font-size: var(--text-body);
+  font-weight: 300;
+  letter-spacing: 0.12em;
+}
+
+.milestone-body {
+  margin: var(--s3) auto 0;
+  max-width: 19rem;
+  font-size: var(--text-caption);
+  line-height: 1.9;
+  color: var(--text-dim);
+}
+
+.milestone-hint {
+  margin-top: var(--s7);
+  font-size: var(--text-micro);
+  letter-spacing: 0.2em;
+  color: var(--text-faint);
 }
 
 @keyframes draw-line {

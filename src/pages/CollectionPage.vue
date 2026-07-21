@@ -1,25 +1,19 @@
 <template>
-  <q-page class="q-pa-md">
-    <div class="text-h5 text-primary q-mb-xs">收藏室</div>
-    <div class="text-caption text-secondary q-mb-md">
-      已解鎖 {{ gemStore.gemsList.length }} / {{ totalSlots }} 顆寶石
+  <main class="page">
+    <header>
+      <h1 class="page-title">收藏室</h1>
+      <p class="page-sub">
+        已解鎖 <span class="count tnum">{{ gemStore.gemsList.length }}</span>
+        <span class="t-faint"> / {{ totalSlots }}</span> 顆寶石
+      </p>
+    </header>
+
+    <div class="bar">
+      <SegTabs v-model="activeTab" :options="tabs" />
     </div>
 
-    <q-tabs
-      v-model="activeTab"
-      dense
-      active-color="white"
-      indicator-color="purple-4"
-      class="q-mb-md"
-      style="color: var(--text-secondary)"
-    >
-      <q-tab name="all" label="全部" />
-      <q-tab name="avatamsaka" label="華嚴經" />
-      <q-tab name="other" label="其他" />
-    </q-tabs>
-
-    <div v-if="gemStore.loading" class="flex flex-center q-pa-xl">
-      <q-spinner-dots size="40px" color="purple-4" />
+    <div v-if="gemStore.loading" class="loading">
+      <AppSpinner :size="34" />
     </div>
 
     <div v-else class="gem-grid">
@@ -33,18 +27,16 @@
       />
     </div>
 
-    <GemViewer
-      v-if="selectedGem"
-      :gem="selectedGem"
-      @close="selectedGem = null"
-    />
-  </q-page>
+    <GemViewer v-if="selectedGem" :gem="selectedGem" @close="selectedGem = null" />
+  </main>
 </template>
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import GemCard from 'src/components/gems/GemCard.vue'
 import GemViewer from 'src/components/gems/GemViewer.vue'
+import SegTabs from 'src/components/ui/SegTabs.vue'
+import AppSpinner from 'src/components/ui/AppSpinner.vue'
 import { useGemStore } from 'src/stores/gemStore'
 import type { GemRecord } from 'src/types/gem'
 
@@ -52,6 +44,12 @@ const gemStore = useGemStore()
 const activeTab = ref('all')
 const selectedGem = ref<GemRecord | null>(null)
 const totalSlots = 88
+
+const tabs = [
+  { value: 'all', label: '全部' },
+  { value: 'avatamsaka', label: '華嚴經' },
+  { value: 'other', label: '其他' },
+]
 
 interface GemSlot {
   key: string
@@ -72,10 +70,9 @@ const displayedSlots = computed<GemSlot[]>(() => {
 
   if (activeTab.value === 'avatamsaka') return avatamsakaSlots
   if (activeTab.value === 'other') {
-    const emptySlots = Array.from(
-      { length: Math.max(0, 8 - otherGems.length) },
-      (_, i) => ({ key: `empty-${i}` })
-    )
+    const emptySlots = Array.from({ length: Math.max(0, 8 - otherGems.length) }, (_, i) => ({
+      key: `empty-${i}`,
+    }))
     return [...otherGems, ...emptySlots]
   }
   return [...avatamsakaSlots, ...otherGems]
@@ -89,10 +86,25 @@ onMounted(() => gemStore.loadGems())
 </script>
 
 <style scoped>
-.gem-grid {
+.count {
+  color: var(--text);
+  font-size: var(--text-body);
+}
+
+.bar {
+  margin-top: var(--s5);
+}
+
+.loading {
   display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
   justify-content: center;
+  padding: var(--s7) 0;
+}
+
+.gem-grid {
+  margin-top: var(--s5);
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(4.5rem, 1fr));
+  gap: var(--s3);
 }
 </style>

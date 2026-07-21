@@ -1,0 +1,125 @@
+/* ============================================================
+   Reset + base
+   ============================================================ */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+* {
+  margin: 0;
+  padding: 0;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  min-height: 100vh;
+  min-height: 100dvh;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-sans);
+  font-size: var(--text-body);
+  font-weight: 400;
+  line-height: 1.6;
+  letter-spacing: 0.01em;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+  overflow-x: hidden;
+  /* Tapping never selects UI chrome on mobile */
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* The glow the glass blurs against. Fixed so it never scrolls —
+   cards passing over it reveal different colour as you move. */
+body::before {
+  content: '';
+  position: fixed;
+  inset: -20%;
+  z-index: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(
+      ellipse 45% 35% at 18% 12%,
+      rgba(167, 139, 250, 0.16) 0%,
+      transparent 68%
+    ),
+    radial-gradient(
+      ellipse 40% 32% at 84% 72%,
+      rgba(96, 165, 250, 0.13) 0%,
+      transparent 68%
+    ),
+    radial-gradient(
+      ellipse 38% 28% at 50% 96%,
+      rgba(45, 212, 191, 0.08) 0%,
+      transparent 64%
+    );
+}
+
+#app {
+  position: relative;
+  z-index: 1;
+  min-height: 100vh;
+  min-height: 100dvh;
+}
+
+button {
+  font: inherit;
+  color: inherit;
+  background: none;
+  border: none;
+  cursor: pointer;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+svg {
+  display: block;
+  flex-shrink: 0;
+}
+
+img {
+  max-width: 100%;
+  display: block;
+}
+
+/* Chinese numerals and Latin digits sit on different baselines in
+   many CJK faces — tabular figures keep counters from jittering. */
+.tnum {
+  font-variant-numeric: tabular-nums;
+}
+
+::selection {
+  background: rgba(167, 139, 250, 0.3);
+}
+
+/* Scrollbars — present but unobtrusive */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.12);
+  border-radius: var(--r-full);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

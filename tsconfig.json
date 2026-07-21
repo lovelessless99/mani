@@ -1,23 +1,24 @@
 {
   "compilerOptions": {
-    "module": "Preserve",
+    "module": "ESNext",
     "moduleResolution": "Bundler",
     "target": "ES2022",
-    "lib": ["es2022", "dom"],
+    "lib": ["es2022", "dom", "dom.iterable"],
     "strict": true,
-    "jsx": "Preserve",
-    "baseUrl": ".",
+    "jsx": "preserve",
+    "resolveJsonModule": true,
+    "esModuleInterop": true,
+    "isolatedModules": true,
+    "noEmit": true,
     "paths": {
-      "src/*": ["src/*"],
-      "app/*": ["./*"],
-      "components/*": ["src/components/*"],
-      "layouts/*": ["src/layouts/*"],
-      "pages/*": ["src/pages/*"],
-      "assets/*": ["src/assets/*"],
-      "boot/*": ["src/boot/*"],
-      "stores/*": ["src/stores/*"]
+      "src/*": ["./src/*"],
+      "components/*": ["./src/components/*"],
+      "layouts/*": ["./src/layouts/*"],
+      "pages/*": ["./src/pages/*"],
+      "stores/*": ["./src/stores/*"],
+      "boot/*": ["./src/boot/*"]
     },
-    "types": ["quasar"],
+    "types": ["vite/client", "vite-plugin-pwa/client"],
     "skipLibCheck": true
   },
   "include": [
@@ -25,10 +26,8 @@
     "src/**/*.d.ts",
     "src/**/*.tsx",
     "src/**/*.vue",
-    "src-pwa/**/*.ts",
-    "quasar.config.js"
+    "tests/**/*.ts",
+    "vite.config.ts"
   ],
-  "exclude": [
-    "node_modules"
-  ]
+  "exclude": ["node_modules", "dist"]
 }

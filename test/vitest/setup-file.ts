@@ -1,7 +1,7 @@
 // Vitest setup file
-// Add any global test setup here
+// Add any global test setup here.
+//
+// Previously this registered the Quasar plugin; the app no longer uses a
+// component framework, so there is nothing global to install.
 
-import { config } from '@vue/test-utils'
-import { Quasar } from 'quasar'
-
-config.global.plugins = [[Quasar, {}]]
+export {}
