@@ -88,23 +88,49 @@
       </ul>
     </AppSheet>
 
-    <AppSheet v-model="pickerOpen" title="背經" subtitle="選擇要背誦的經典">
-      <ul class="chapters">
-        <li v-for="d in drillable" :key="d.id" class="chapter glass">
-          <div class="chapter__main">
-            <p class="chapter__name">{{ d.titleZh }}</p>
-            <p class="chapter__part">{{ d.note }}</p>
-          </div>
-          <AppButton variant="glass" @click="startDrill(d.id)">開始</AppButton>
-        </li>
-      </ul>
-      <p class="memo__hint">其餘經典的全文尚未收錄,收錄後會自動出現在這裡。</p>
+    <!-- 背經: pick a sutra, then a range -->
+    <AppSheet
+      v-model="pickerOpen"
+      :title="rangeSutra ? rangeMeta?.titleZh : '背經'"
+      :subtitle="rangeSutra ? '選擇背誦範圍' : '選擇要背誦的經典'"
+    >
+      <template v-if="!rangeSutra">
+        <ul class="chapters">
+          <li v-for="d in drillable" :key="d.id" class="chapter glass">
+            <div class="chapter__main">
+              <p class="chapter__name">{{ d.titleZh }}</p>
+              <p class="chapter__part">共 {{ d.count }} {{ d.unit }}</p>
+            </div>
+            <AppButton variant="glass" @click="openRange(d.id)">選範圍</AppButton>
+          </li>
+        </ul>
+        <p class="memo__hint">其餘經典的全文尚未收錄,收錄後會自動出現在這裡。</p>
+      </template>
+
+      <template v-else>
+        <button class="range range--all" type="button" @click="startDrill('all')">
+          <span class="range__name">全部 · 不限範圍</span>
+          <span class="range__sub">整部經隨機出題</span>
+        </button>
+        <ul class="ranges">
+          <li v-for="c in rangeItems" :key="c.id">
+            <button class="range" type="button" @click="startDrill(c.id)">
+              <span class="range__name">{{ c.name }}</span>
+              <span v-if="c.gist" class="range__gist">{{ c.gist }}</span>
+            </button>
+          </li>
+        </ul>
+        <AppButton variant="ghost" block class="range__back" @click="rangeSutra = ''">
+          ← 換一部經
+        </AppButton>
+      </template>
     </AppSheet>
 
     <FillBlankDrill
-      v-if="drillOpen && drillText.length"
-      :title="activeSutra?.titleZh ?? ''"
-      :paragraphs="drillText"
+      v-if="drillOpen && drillSections.length"
+      :title="drillTitle"
+      :sections="drillSections"
+      :source="drillSource"
       @close="drillOpen = false"
       @solved="onDrillSolved"
     />
@@ -149,6 +175,7 @@ interface ChapterMeta {
   id: string
   name: string
   part?: string
+  gist?: string
 }
 interface SutraChapters {
   unit: string
@@ -169,26 +196,72 @@ const mode = ref<Mode>('recite')
 const busy = ref<string | null>(null)
 const pulse = ref<string | null>(null)
 const pulseKey = ref(0)
+interface DrillSection {
+  name: string
+  gist?: string
+  paragraphs: string[]
+}
+
 const drillOpen = ref(false)
-const drillText = ref<string[]>([])
+const drillSections = ref<DrillSection[]>([])
+const drillSource = ref('')
 const drillSutraId = ref('')
+const drillChapterId = ref('')
+
+// The drill runs against drillSutraId, which is not necessarily the sutra
+// whose chapter sheet is open — so its title comes from here, not activeSutra.
+const drillTitle = computed(
+  () => getAllSutras().find((s) => s.id === drillSutraId.value)?.titleZh ?? ''
+)
+
 const pickerOpen = ref(false)
+// Which sutra's ranges are being shown; empty means the sutra list.
+const rangeSutra = ref('')
+const rangeMeta = computed(() => getSutraMeta(rangeSutra.value))
+const rangeItems = computed(() => CHAPTERS[rangeSutra.value]?.items ?? [])
 
 /** Texts bundled with the app, and so available to drill against. */
 const drillable = computed(() =>
   getAllSutras()
     .filter((s) => s.storageType === 'bundled')
-    .map((s) => ({ id: s.id, titleZh: s.titleZh, note: CHAPTERS[s.id]?.items[0]?.name ?? '' }))
+    .map((s) => ({
+      id: s.id,
+      titleZh: s.titleZh,
+      unit: CHAPTERS[s.id]?.unit ?? '卷',
+      count: CHAPTERS[s.id]?.items.length ?? 0,
+    }))
 )
 
-async function startDrill(sutraId: string) {
-  const first = CHAPTERS[sutraId]?.items[0]
-  if (!first) return
+function openRange(sutraId: string) {
+  rangeSutra.value = sutraId
+}
+
+/** chapterId 'all' loads every chapter; otherwise just that one. */
+async function startDrill(chapterId: string) {
+  const sutraId = rangeSutra.value
+  const meta = CHAPTERS[sutraId]
+  if (!meta) return
+  const items = chapterId === 'all' ? meta.items : meta.items.filter((c) => c.id === chapterId)
+  if (!items.length) return
+
   try {
-    const vol = await loadVolume(sutraId, first.id)
-    drillText.value = vol.blocks.filter((b) => b.type !== 'heading').map((b) => b.text)
+    const sections: DrillSection[] = []
+    let source = ''
+    for (const c of items) {
+      const vol = await loadVolume(sutraId, c.id)
+      source = vol.source ?? source
+      sections.push({
+        name: c.name,
+        gist: c.gist,
+        paragraphs: vol.blocks.filter((b) => b.type !== 'heading').map((b) => b.text),
+      })
+    }
+    drillSections.value = sections
+    drillSource.value = source
     drillSutraId.value = sutraId
+    drillChapterId.value = chapterId === 'all' ? meta.items[0].id : chapterId
     pickerOpen.value = false
+    rangeSutra.value = ''
     drillOpen.value = true
   } catch (e) {
     toast.error(describeError(e))
@@ -197,10 +270,10 @@ async function startDrill(sutraId: string) {
 
 /** A round answered clean is one recitation from memory. */
 async function onDrillSolved() {
-  const first = CHAPTERS[drillSutraId.value]?.items[0]
-  if (!first) return
+  const chapterId = drillChapterId.value || CHAPTERS[drillSutraId.value]?.items[0]?.id
+  if (!chapterId) return
   try {
-    await progressStore.markVolumeComplete(drillSutraId.value, `${first.id}-memorize`)
+    await progressStore.markVolumeComplete(drillSutraId.value, `${chapterId}-memorize`)
   } catch (e) {
     toast.error(describeError(e))
   }
@@ -451,6 +524,62 @@ onMounted(async () => {
   font-size: var(--text-micro);
   color: var(--text-faint);
   letter-spacing: 0.05em;
+}
+
+.ranges {
+  list-style: none;
+  display: grid;
+  gap: var(--s2);
+}
+
+.range {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: var(--s3) var(--s4);
+  border-radius: var(--r-md);
+  border: 1px solid var(--hairline);
+  background: rgba(255, 255, 255, 0.03);
+  text-align: left;
+  transition:
+    background var(--fast) var(--ease),
+    border-color var(--fast) var(--ease),
+    transform var(--fast) var(--ease);
+}
+
+.range:hover {
+  background: var(--glass-2);
+  border-color: rgba(167, 139, 250, 0.4);
+  transform: translateY(-2px);
+}
+
+.range:active {
+  transform: scale(0.99);
+}
+
+.range--all {
+  margin-bottom: var(--s3);
+  border-color: rgba(167, 139, 250, 0.45);
+  background: rgba(167, 139, 250, 0.1);
+}
+
+.range__name {
+  font-size: var(--text-body);
+  letter-spacing: 0.06em;
+  color: var(--text);
+}
+
+.range__sub,
+.range__gist {
+  font-size: var(--text-micro);
+  line-height: 1.6;
+  color: var(--text-faint);
+  letter-spacing: 0.04em;
+}
+
+.range__back {
+  margin-top: var(--s4);
 }
 
 .memo__hint {

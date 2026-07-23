@@ -29,6 +29,9 @@
     <div class="content">
       <div class="today">
         <p class="today__date">{{ todayLabel }}</p>
+        <p v-if="fast.isFastDay.value" class="today__fast">
+          ✦ 今日為十齋日 · {{ fast.lunarLabel.value }} ✦
+        </p>
         <h1 class="today__name">{{ todayFigure.name }}</h1>
         <p class="today__epithet">{{ todayFigure.epithet }}</p>
         <p class="today__line">{{ todayLine }}</p>
@@ -68,6 +71,7 @@ import { useGemStore } from 'src/stores/gemStore'
 import { getAllSutras } from 'src/services/sutraService'
 import { useToast, describeError } from 'src/composables/useToast'
 import blessingsData from 'src/data/meta/blessings.json'
+import { useFastDay } from 'src/composables/useFastDay'
 
 // Three.js is ~1MB. Keeping the scene behind an async boundary means the
 // home route paints immediately and the sea arrives a beat later, rather
@@ -113,6 +117,8 @@ const dayIndex = Math.floor(Date.now() / 86_400_000)
 const figures = blessingsData.figures as Figure[]
 const todayFigure = figures[dayIndex % figures.length]
 const todayLine = todayFigure.lines[dayIndex % todayFigure.lines.length]
+
+const fast = useFastDay()
 
 const todayLabel = computed(() =>
   new Date().toLocaleDateString('zh-TW', {
@@ -290,6 +296,19 @@ onMounted(async () => {
   letter-spacing: 0.2em;
   text-indent: 0.2em;
   text-shadow: 0 2px 24px rgba(0, 0, 0, 0.85);
+}
+
+.today__fast {
+  margin-top: var(--s2);
+  display: inline-block;
+  padding: 3px var(--s3);
+  border-radius: var(--r-full);
+  font-size: var(--text-micro);
+  letter-spacing: 0.14em;
+  color: var(--amber);
+  background: rgba(251, 191, 36, 0.12);
+  border: 1px solid rgba(251, 191, 36, 0.35);
+  text-shadow: 0 1px 10px rgba(0, 0, 0, 0.7);
 }
 
 .today__epithet {

@@ -49,6 +49,12 @@ withDefaults(
     opacity var(--fast) var(--ease);
 }
 
+/* Lift on hover so a pointing device gets a clear "this is pressable"
+   cue, not just a faint colour shift; press pushes back down. */
+.btn:hover:not(:disabled) {
+  transform: translateY(-2px);
+}
+
 .btn:active:not(:disabled) {
   transform: scale(0.97);
 }
@@ -56,6 +62,12 @@ withDefaults(
 .btn:disabled {
   opacity: 0.4;
   cursor: default;
+}
+
+/* Icon-only controls sit in tight rows; a shift would jump them around,
+   so they brighten instead of lifting. */
+.btn--icon:hover:not(:disabled) {
+  transform: none;
 }
 
 .btn:focus-visible {

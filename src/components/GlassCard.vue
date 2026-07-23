@@ -42,6 +42,7 @@ defineProps<{
 .card--clickable:hover {
   background: var(--glass-2);
   border-color: var(--hairline-strong);
+  transform: translateY(-2px);
 }
 
 .card--clickable:active {

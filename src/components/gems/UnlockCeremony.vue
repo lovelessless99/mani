@@ -1,6 +1,11 @@
 <template>
-  <Transition name="ceremony">
-    <div v-if="gem" class="ceremony-overlay" @click="onTap">
+  <!-- Teleported to body so it is a top-level layer. Rendered inline it
+       sat inside .page (a low stacking context) and the chapter sheet,
+       teleported to body at z 900, painted over it — the ceremony could
+       not be tapped to dismiss, which trapped the screen after a +1. -->
+  <Teleport to="body">
+    <Transition name="ceremony">
+      <div v-if="gem" class="ceremony-overlay" @click="onTap">
       <!-- Phase 1: Gem reveal -->
       <template v-if="phase === 'gem'">
         <div class="particles">
@@ -8,15 +13,15 @@
         </div>
 
         <div class="ceremony-gem" :class="{ 'ceremony-gem--visible': gemVisible }">
-          <TresCanvas :alpha="true" :antialias="true" style="width:220px;height:220px">
-            <TresPerspectiveCamera :position="[0, 0, 3.5]" :fov="45" />
-            <GemEnvironment :tint="gem.params.colorHex" :intensity="1.15" />
-            <GemMesh :params="gem.params" :scale="1.3" :auto-rotate="true" />
+          <TresCanvas :alpha="true" :antialias="true" style="width:240px;height:240px">
+            <TresPerspectiveCamera :position="[0, 0, 3.9]" :fov="45" />
+            <GemEnvironment :tint="shownGem!.params.colorHex" :intensity="1.15" />
+            <GemMesh :params="shownGem!.params" :scale="1.15" :auto-rotate="true" />
             <TresDirectionalLight :position="[3, 4, 4]" :intensity="2.2" color="#ffffff" />
             <TresDirectionalLight
               :position="[-4, -2, -3]"
               :intensity="1.3"
-              :color="gem.params.colorHex"
+              :color="shownGem!.params.colorHex"
             />
             <TresPointLight
               :position="[0, 1.8, 2.5]"
@@ -29,10 +34,10 @@
 
         <div class="ceremony-info" :class="{ 'ceremony-info--visible': infoVisible }">
           <p class="ceremony-eyebrow">寶石解鎖</p>
-          <h2 v-if="buddhaName" class="ceremony-name" :style="{ color: gem.params.colorHex }">
+          <h2 v-if="buddhaName" class="ceremony-name" :style="{ color: shownGem!.params.colorHex }">
             {{ buddhaName }}
           </h2>
-          <p class="ceremony-cut">{{ gem.params.geometry }} 切割</p>
+          <p class="ceremony-cut">{{ cutName }}</p>
           <p class="ceremony-hint tap-hint">
             {{ constellationName ? '點擊看星座' : '點擊繼續' }}
           </p>
@@ -50,8 +55,8 @@
           <!-- The constellation's real stick figure -->
           <div class="constellation-svg">
             <ConstellationFigure
-              :constellation-id="gem.constellationId"
-              :color="gem.params.colorHex"
+              :constellation-id="shownGem!.constellationId"
+              :color="shownGem!.params.colorHex"
               :label="constellationName"
               :delay-in="0.2"
             />
@@ -61,15 +66,16 @@
           <div class="constellation-info">
             <h2 class="ceremony-name ceremony-name--lg">{{ constellationName }}</h2>
             <p class="ceremony-name-en">{{ constellationNameEn }}</p>
-            <p class="ceremony-link" :style="{ color: gem.params.colorHex }">
+            <p class="ceremony-link" :style="{ color: shownGem!.params.colorHex }">
               {{ buddhaName }} · 對應星座
             </p>
             <p class="ceremony-hint">點擊繼續</p>
           </div>
         </div>
       </template>
-    </div>
-  </Transition>
+      </div>
+    </Transition>
+  </Teleport>
 </template>
 
 <script setup lang="ts">
@@ -84,6 +90,18 @@ import constellationsData from 'src/data/meta/constellations-88.json'
 
 const props = defineProps<{ gem: GemRecord | null }>()
 const emit = defineEmits<{ dismiss: [] }>()
+
+// The overlay keeps rendering through its leave transition after `gem`
+// has been cleared. Reading `gem.params` then throws, so the last gem is
+// latched and the template draws from that instead of the live prop.
+const shownGem = ref<GemRecord | null>(null)
+watch(
+  () => props.gem,
+  (g) => {
+    if (g) shownGem.value = g
+  },
+  { immediate: true }
+)
 
 const phase = ref<'gem' | 'constellation'>('gem')
 const gemVisible = ref(false)
@@ -144,6 +162,19 @@ const buddhaName = computed(() => buddha.value?.nameZh)
 const constellationName = computed(() => constellation.value?.nameZh)
 const constellationNameEn = computed(() => constellation.value?.nameEn)
 
+const CUT_NAMES: Record<string, string> = {
+  lotus: '蓮華切割',
+  vase: '寶瓶切割',
+  stupa: '寶塔切割',
+  dome: '佛頂切割',
+  octahedron: '八面切割',
+  icosahedron: '二十面切割',
+  dodecahedron: '十二面切割',
+  sphere: '圓珠切割',
+  tetrahedron: '四面切割',
+}
+const cutName = computed(() => CUT_NAMES[shownGem.value?.params.geometry ?? ''] ?? '寶石切割')
+
 function particleStyle(n: number) {
   const angle = (n / 14) * 360
   return {
@@ -171,7 +202,7 @@ function bgStarStyle(n: number) {
 .ceremony-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.93);
+  background: rgba(3, 3, 8, 0.975);
   z-index: 2000;
   display: flex;
   flex-direction: column;
@@ -210,6 +241,14 @@ function bgStarStyle(n: number) {
   opacity: 0;
   transform: scale(0.3);
   transition: opacity 0.6s ease, transform 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+/* The WebGL canvas is a hard-edged square; over the near-opaque overlay
+   its transparent border reads as a faint box around the gem. A radial
+   mask dissolves those edges so only the stone and its glow remain. */
+.ceremony-gem :deep(canvas) {
+  -webkit-mask-image: radial-gradient(circle at 50% 50%, #000 62%, transparent 82%);
+  mask-image: radial-gradient(circle at 50% 50%, #000 62%, transparent 82%);
 }
 
 /* The ceremony canvas is small, so it cannot carry the studio backdrop

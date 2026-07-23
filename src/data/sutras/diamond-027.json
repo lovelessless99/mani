@@ -1,0 +1,32 @@
+{
+  "sutraId": "diamond",
+  "volumeId": "027",
+  "titleZh": "無斷無滅分",
+  "source": "CBETA，《大正藏》T08n0235，姚秦·鳩摩羅什譯;三十二分依昭明太子科判。",
+  "blocks": [
+    {
+      "type": "heading",
+      "text": "無斷無滅分"
+    },
+    {
+      "type": "paragraph",
+      "text": "爾時，世尊而說偈言：「須菩提！汝若作是念：『如來不以具足相故，得阿耨多羅三藐三菩提。"
+    },
+    {
+      "type": "paragraph",
+      "text": "』須菩提！莫作是念：『如來不以具足相故，得阿耨多羅三藐三菩提。"
+    },
+    {
+      "type": "paragraph",
+      "text": "』「須菩提！汝若作是念：『發阿耨多羅三藐三菩提者，說諸法斷滅相。"
+    },
+    {
+      "type": "paragraph",
+      "text": "』莫作是念。"
+    },
+    {
+      "type": "paragraph",
+      "text": "何以故？發阿耨多羅三藐三菩提心者，於法不說斷滅相。"
+    }
+  ]
+}

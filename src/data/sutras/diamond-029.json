@@ -1,0 +1,20 @@
+{
+  "sutraId": "diamond",
+  "volumeId": "029",
+  "titleZh": "威儀寂淨分",
+  "source": "CBETA，《大正藏》T08n0235，姚秦·鳩摩羅什譯;三十二分依昭明太子科判。",
+  "blocks": [
+    {
+      "type": "heading",
+      "text": "威儀寂淨分"
+    },
+    {
+      "type": "paragraph",
+      "text": "「須菩提！若有人言『如來若來若去、若坐若臥』，是人不解我所說義。"
+    },
+    {
+      "type": "paragraph",
+      "text": "何以故？如來者，無所從來，亦無所去，故名如來。"
+    }
+  ]
+}

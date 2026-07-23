@@ -23,6 +23,7 @@ export interface SutraVolume {
   volumeId: string        // '001', '002', ...
   titleZh: string         // 大方廣佛華嚴經卷第一
   blocks: SutraBlock[]
+  source?: string         // attribution, e.g. CBETA edition
 }
 
 export interface VolumeProgress {

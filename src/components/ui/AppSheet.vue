@@ -1,16 +1,16 @@
 <template>
   <Teleport to="body">
     <Transition name="sheet">
-      <div
-        v-if="modelValue"
-        class="sheet-root"
-        role="dialog"
-        aria-modal="true"
-        @click.self="close"
-      >
-        <div class="sheet-scrim" />
+      <div v-if="modelValue" class="sheet-root" role="dialog" aria-modal="true">
+        <!-- Tapping the dim backdrop closes the sheet. It sits above
+             sheet-root, so the close handler has to live here, not on a
+             .self check of the parent that the scrim never lets fire. -->
+        <div class="sheet-scrim" @click="close" />
         <div class="sheet glass">
-          <div class="sheet__grip" />
+          <button class="sheet__grip" type="button" aria-label="關閉" @click="close" />
+          <button class="sheet__x" type="button" aria-label="關閉" @click="close">
+            <AppIcon name="close" :size="18" />
+          </button>
           <header v-if="title" class="sheet__head">
             <h2 class="sheet__title">{{ title }}</h2>
             <p v-if="subtitle" class="sheet__sub">{{ subtitle }}</p>
@@ -26,6 +26,7 @@
 
 <script setup lang="ts">
 import { watch, onBeforeUnmount } from 'vue'
+import AppIcon from './AppIcon.vue'
 
 const props = defineProps<{
   modelValue: boolean
@@ -106,18 +107,58 @@ onBeforeUnmount(() => {
   }
 }
 
+/* A bigger tap target than the visible bar, so the handle is easy to
+   hit to dismiss on a phone. */
 .sheet__grip {
-  width: 34px;
-  height: 4px;
-  margin: var(--s2) auto var(--s3);
-  border-radius: var(--r-full);
-  background: rgba(255, 255, 255, 0.18);
   flex-shrink: 0;
+  width: 64px;
+  height: 20px;
+  margin: 0 auto var(--s2);
+  padding: 0;
+  display: block;
+  position: relative;
+}
+.sheet__grip::before {
+  content: '';
+  position: absolute;
+  top: 8px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 36px;
+  height: 4px;
+  border-radius: var(--r-full);
+  background: rgba(255, 255, 255, 0.2);
+  transition: background var(--fast) var(--ease);
+}
+.sheet__grip:hover::before {
+  background: rgba(255, 255, 255, 0.4);
+}
+
+.sheet__x {
+  position: absolute;
+  top: var(--s3);
+  right: var(--s3);
+  width: 34px;
+  height: 34px;
+  display: grid;
+  place-items: center;
+  border-radius: var(--r-full);
+  color: var(--text-dim);
+  background: rgba(255, 255, 255, 0.06);
+  transition: color var(--fast) var(--ease), background var(--fast) var(--ease);
+}
+.sheet__x:hover {
+  color: var(--text);
+  background: rgba(255, 255, 255, 0.14);
+}
+.sheet__x:active {
+  transform: scale(0.92);
 }
 
 .sheet__head {
   flex-shrink: 0;
   padding-bottom: var(--s4);
+  padding-right: var(--s6);
 }
 
 .sheet__title {

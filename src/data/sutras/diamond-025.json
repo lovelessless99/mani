@@ -1,0 +1,32 @@
+{
+  "sutraId": "diamond",
+  "volumeId": "025",
+  "titleZh": "化無所化分",
+  "source": "CBETA，《大正藏》T08n0235，姚秦·鳩摩羅什譯;三十二分依昭明太子科判。",
+  "blocks": [
+    {
+      "type": "heading",
+      "text": "化無所化分"
+    },
+    {
+      "type": "paragraph",
+      "text": "「須菩提！於意云何？汝等勿謂如來作是念：『我當度眾生。"
+    },
+    {
+      "type": "paragraph",
+      "text": "』須菩提！莫作是念。"
+    },
+    {
+      "type": "paragraph",
+      "text": "何以故？實無有眾生如來度者，若有眾生如來度者，如來則有我、人、眾生、壽者。"
+    },
+    {
+      "type": "paragraph",
+      "text": "須菩提！如來說有我者，則非有我，而凡夫之人以為有我。"
+    },
+    {
+      "type": "paragraph",
+      "text": "須菩提！凡夫者，如來說則非凡夫。"
+    }
+  ]
+}

@@ -1,0 +1,24 @@
+{
+  "sutraId": "diamond",
+  "volumeId": "005",
+  "titleZh": "如理實見分",
+  "source": "CBETA，《大正藏》T08n0235，姚秦·鳩摩羅什譯;三十二分依昭明太子科判。",
+  "blocks": [
+    {
+      "type": "heading",
+      "text": "如理實見分"
+    },
+    {
+      "type": "paragraph",
+      "text": "「須菩提！於意云何？可以身相見如來不？」「不也，世尊！不可以身相得見如來。"
+    },
+    {
+      "type": "paragraph",
+      "text": "何以故？如來所說身相，即非身相。"
+    },
+    {
+      "type": "paragraph",
+      "text": "」佛告須菩提：「凡所有相，皆是虛妄；若見諸相非相，則見如來。"
+    }
+  ]
+}
