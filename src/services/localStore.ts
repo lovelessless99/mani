@@ -9,7 +9,7 @@
 
 const NS = 'flower:guest:'
 export const GUEST_FLAG = 'flower:guest:on'
-const COLLECTIONS = ['progress', 'gems', 'dedications'] as const
+const COLLECTIONS = ['progress', 'gems', 'dedications', 'stats'] as const
 
 type Row = Record<string, unknown>
 

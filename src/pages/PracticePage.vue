@@ -9,7 +9,34 @@
       <AppSpinner :size="34" />
     </div>
 
-    <GlassCard v-else-if="drillable.length" clickable class="memo" @click="pickerOpen = true">
+    <!-- 今日功課籤 — the day's drawn reading, sized by rank -->
+    <section
+      v-if="!progressStore.loading && dailyItems.length"
+      class="draw"
+      :class="{ 'draw--done': allDailyDone }"
+    >
+      <div class="draw__head">
+        <div class="draw__ribbon">今日功課</div>
+        <span class="draw__rank">{{ rankInfo.rank.value.name }}</span>
+      </div>
+      <ul class="draw__list">
+        <li v-for="it in dailyItems" :key="it.slot">
+          <button class="ditem" type="button" @click="goDailyItem(it)">
+            <span class="ditem__check" :class="{ 'ditem__check--on': dailyStore.isDone(it.slot) }">
+              <AppIcon v-if="dailyStore.isDone(it.slot)" name="check" :size="13" />
+            </span>
+            <span class="ditem__main">
+              <span class="ditem__sutra">{{ it.sutraTitle }}</span>
+              <span class="ditem__chapter">{{ it.chapterName }}</span>
+            </span>
+            <span class="ditem__go">›</span>
+          </button>
+        </li>
+      </ul>
+      <p v-if="allDailyDone" class="draw__all-done">✦ 今日功課圓滿 ✦</p>
+    </section>
+
+    <GlassCard v-if="!progressStore.loading && drillable.length" clickable class="memo" @click="pickerOpen = true">
       <div class="memo__row">
         <AppIcon name="book" :size="20" class="memo__icon" />
         <div class="memo__main">
@@ -42,6 +69,21 @@
             </div>
             <AppIcon name="chevronRight" :size="18" class="sutra__go" />
           </div>
+
+          <!-- 圓滿一部: a standalone one-tap for the whole sutra, so
+               finishing all chapters at once never means opening the sheet
+               and tapping every circle. Single-unit texts don't need it. -->
+          <button
+            v-if="s.total > 1"
+            class="whole"
+            type="button"
+            :disabled="busy !== null"
+            :class="{ 'whole--busy': busy === wholeKey(s.id) }"
+            @click.stop="recordWhole(s.id)"
+          >
+            <AppIcon name="check" :size="15" class="whole__ico" />
+            <span>圓滿一部 · 每{{ s.unit }}各＋1</span>
+          </button>
         </GlassCard>
       </li>
     </ul>
@@ -52,19 +94,6 @@
       :title="activeSutra?.titleZh"
       :subtitle="`點右側圓圈記錄一${activeSutra?.unit ?? '遍'}`"
     >
-      <SegTabs v-model="mode" :options="MODE_TABS" class="mode-tabs" />
-
-      <AppButton
-        v-if="canDrill"
-        variant="glass"
-        icon="book"
-        block
-        class="drill-cta"
-        @click="openDrill"
-      >
-        拉字填空背誦
-      </AppButton>
-
       <ul class="chapters">
         <li v-for="c in chapters" :key="c.id" class="chapter glass">
           <div class="chapter__main">
@@ -73,8 +102,8 @@
           </div>
 
           <button
-            class="tap"
-            :class="[`tap--${mode}`, { 'tap--busy': busy === c.id }]"
+            class="tap tap--recite"
+            :class="{ 'tap--busy': busy === c.id }"
             type="button"
             :disabled="busy !== null"
             :aria-label="`${c.name} 記錄一遍`"
@@ -115,7 +144,17 @@
         <ul class="ranges">
           <li v-for="c in rangeItems" :key="c.id">
             <button class="range" type="button" @click="startDrill(c.id)">
-              <span class="range__name">{{ c.name }}</span>
+              <span class="range__row">
+                <span class="range__name">{{ c.name }}</span>
+                <span class="range__mastery" :title="masteryOf(rangeSutra, c.id).label">
+                  <span
+                    v-for="n in 4"
+                    :key="n"
+                    class="star"
+                    :class="{ 'star--on': n <= masteryOf(rangeSutra, c.id).stars }"
+                  >★</span>
+                </span>
+              </span>
               <span v-if="c.gist" class="range__gist">{{ c.gist }}</span>
             </button>
           </li>
@@ -153,23 +192,23 @@ import GlassCard from 'src/components/GlassCard.vue'
 import AppIcon from 'src/components/ui/AppIcon.vue'
 import AppSpinner from 'src/components/ui/AppSpinner.vue'
 import AppSheet from 'src/components/ui/AppSheet.vue'
-import SegTabs from 'src/components/ui/SegTabs.vue'
 import FillBlankDrill from 'src/components/practice/FillBlankDrill.vue'
 import SutraCompleteCeremony from 'src/components/practice/SutraCompleteCeremony.vue'
 import UnlockCeremony from 'src/components/gems/UnlockCeremony.vue'
 import { useProgressStore } from 'src/stores/progressStore'
 import { useGemStore } from 'src/stores/gemStore'
+import { useStreakStore } from 'src/stores/streakStore'
+import { useAchievementStore } from 'src/stores/achievementStore'
+import { useDailyStore } from 'src/stores/dailyStore'
 import { getAllSutras, getSutraMeta, loadVolume } from 'src/services/sutraService'
 import { SUTRA_GEM_SHAPE } from 'src/services/gemService'
 import { useToast, describeError } from 'src/composables/useToast'
+import { useChime } from 'src/composables/useChime'
+import { useDailyTask, type DailyItem } from 'src/composables/useDailyTask'
+import { useRank } from 'src/composables/useRank'
 import chaptersData from 'src/data/meta/sutra-chapters.json'
 
 type Mode = 'recite' | 'memorize'
-
-const MODE_TABS = [
-  { value: 'recite', label: '念經' },
-  { value: 'memorize', label: '背誦' },
-]
 
 interface ChapterMeta {
   id: string
@@ -188,15 +227,43 @@ const GEM_CAP = 88
 
 const progressStore = useProgressStore()
 const gemStore = useGemStore()
+const streakStore = useStreakStore()
+const achievementStore = useAchievementStore()
+const chime = useChime()
+const dailyStore = useDailyStore()
+const daily = useDailyTask()
+const rankInfo = useRank()
+
+const dailyItems = computed(() => daily.items.value)
+const allDailyDone = computed(
+  () => dailyItems.value.length > 0 && dailyItems.value.every((it) => dailyStore.isDone(it.slot))
+)
+
+// Open the drawn chapter's sutra sheet so it can be recited straight away.
+function goDailyItem(it: DailyItem) {
+  open(it.sutraId)
+}
+
+/**
+ * Ask the achievement store whether this action crossed any medal
+ * threshold. Delayed a beat so a gem-unlock or completion ceremony has the
+ * stage first; the medal then follows rather than fighting for it.
+ */
+function checkMedals(delay = 900) {
+  setTimeout(() => {
+    achievementStore.check().catch(() => {})
+  }, delay)
+}
 const toast = useToast()
 
 const sheetOpen = ref(false)
 const activeId = ref('')
-const mode = ref<Mode>('recite')
 const busy = ref<string | null>(null)
+const ALL = '__all__' // busy sentinel for the whole-sutra action
 const pulse = ref<string | null>(null)
 const pulseKey = ref(0)
 interface DrillSection {
+  id: string
   name: string
   gist?: string
   paragraphs: string[]
@@ -251,6 +318,7 @@ async function startDrill(chapterId: string) {
       const vol = await loadVolume(sutraId, c.id)
       source = vol.source ?? source
       sections.push({
+        id: c.id,
         name: c.name,
         gist: c.gist,
         paragraphs: vol.blocks.filter((b) => b.type !== 'heading').map((b) => b.text),
@@ -268,15 +336,43 @@ async function startDrill(chapterId: string) {
   }
 }
 
-/** A round answered clean is one recitation from memory. */
-async function onDrillSolved() {
-  const chapterId = drillChapterId.value || CHAPTERS[drillSutraId.value]?.items[0]?.id
-  if (!chapterId) return
+/**
+ * A clean round is one recitation from memory, credited to the chapter
+ * the question actually came from — which is why the game reports it, so
+ * 全部 range still builds each 品's mastery separately. Repeated mastery
+ * of a chapter also earns its gem, the same as reciting it.
+ */
+async function onDrillSolved(chapterId: string) {
+  const id = chapterId || drillChapterId.value || CHAPTERS[drillSutraId.value]?.items[0]?.id
+  if (!id) return
   try {
-    await progressStore.markVolumeComplete(drillSutraId.value, `${chapterId}-memorize`)
+    await progressStore.markVolumeComplete(drillSutraId.value, `${id}-memorize`)
+    chime.strike(0.6)
+    await earnGemIfFirst(drillSutraId.value, id, false)
+    await streakStore.touchToday()
+    checkMedals()
   } catch (e) {
     toast.error(describeError(e))
   }
+}
+
+/**
+ * 熟練度 — how well a chapter is known, from how many times it has been
+ * recalled in the 背經 games. Recitation counting and memory practice are
+ * different acts, so mastery reads the memorize tally alone.
+ */
+const MASTERY = [
+  { at: 0, label: '生疏', stars: 0 },
+  { at: 1, label: '漸熟', stars: 1 },
+  { at: 3, label: '純熟', stars: 2 },
+  { at: 6, label: '精熟', stars: 3 },
+  { at: 12, label: '滾瓜爛熟', stars: 4 },
+]
+function masteryOf(sutraId: string, chapterId: string) {
+  const n = countFor(sutraId, chapterId, 'memorize')
+  let m = MASTERY[0]
+  for (const level of MASTERY) if (n >= level.at) m = level
+  return m
 }
 const completed = ref<{ id: string; title: string; round: number } | null>(null)
 
@@ -361,23 +457,53 @@ const chapters = computed(() => {
   if (!meta) return []
   return meta.items.map((c) => ({
     ...c,
-    count: countFor(activeId.value, c.id, mode.value),
+    count: countFor(activeId.value, c.id, 'recite'),
   }))
 })
-
-// Only texts bundled with the app have their words on hand; the remote
-// volumes would need a download that has not been set up.
-const canDrill = computed(
-  () => getSutraMeta(activeId.value)?.storageType === 'bundled'
-)
-
-function openDrill() {
-  void startDrill(activeId.value)
-}
 
 function open(sutraId: string) {
   activeId.value = sutraId
   sheetOpen.value = true
+}
+
+/**
+ * Award the chapter's gem the first time it is opened.
+ *
+ * Asks the collection, not the counter: `chapterTotal` folds in the
+ * legacy keys from the builds where a whole sutra shared one slot, so a
+ * chapter practised back then never looks untouched — and never earned
+ * its stone. Whether a gem exists is the question actually being asked,
+ * and it is idempotent: a chapter that missed its gem gets one next tap.
+ *
+ * Each sutra keeps its own set, so the gem is fixed by the chapter's
+ * position within its sutra. The 88 Buddhas/constellations belong to
+ * 華嚴經 alone; other sutras are identified by their gem shape.
+ */
+async function earnGemIfFirst(sutraId: string, chapterId: string, announce: boolean) {
+  if (gemStore.hasGemForVolume(sutraId, chapterId)) return
+  const idx = (CHAPTERS[sutraId]?.items.findIndex((c) => c.id === chapterId) ?? 0) + 1
+  const pair = String(Math.min(idx, 88)).padStart(3, '0')
+  const isAvatamsaka = sutraId === 'avatamsaka'
+  await gemStore.earnGem(
+    {
+      source: 'sutra_volume',
+      sourceRef: `${sutraId}/${chapterId}`,
+      ...(isAvatamsaka ? { buddhaId: `b${pair}`, constellationId: `c${pair}` } : {}),
+      ...(SUTRA_GEM_SHAPE[sutraId] ? { geometry: SUTRA_GEM_SHAPE[sutraId] } : {}),
+    },
+    announce
+  )
+}
+
+/** Fire the completion ceremony if this recording finished a 部. */
+function celebrateIfRoundDone(sutraId: string, roundsBefore: number, delay: number) {
+  const meta = sutras.value.find((x) => x.id === sutraId)
+  if (meta && meta.rounds > roundsBefore) {
+    chime.strike(1) // a fuller bell for a finished 部
+    setTimeout(() => {
+      completed.value = { id: sutraId, title: meta.titleZh, round: meta.rounds }
+    }, delay)
+  }
 }
 
 async function record(chapter: ChapterMeta) {
@@ -388,55 +514,50 @@ async function record(chapter: ChapterMeta) {
   pulseKey.value += 1
 
   const sutraId = activeId.value
-  /*
-   * Ask the collection, not the counter.
-   *
-   * `chapterTotal` folds in the legacy keys from the builds where a whole
-   * sutra shared one slot, so chapter 001 of anything practised back then
-   * never looks untouched — and never earned its stone. Whether a gem
-   * exists for this chapter is the question actually being asked, and it
-   * is idempotent: a chapter that missed its gem gets one on the next tap.
-   */
-  const firstEver = !gemStore.hasGemForVolume(sutraId, chapter.id)
   const roundsBefore = sutras.value.find((x) => x.id === sutraId)?.rounds ?? 0
 
   try {
-    const updated = await progressStore.markVolumeComplete(
-      sutraId,
-      slotKey(chapter.id, mode.value)
-    )
+    await progressStore.markVolumeComplete(sutraId, slotKey(chapter.id, 'recite'))
+    chime.strike(0.5)
+    await earnGemIfFirst(sutraId, chapter.id, true)
+    await streakStore.touchToday()
+    await dailyStore.markDone(`${sutraId}/${chapter.id}`)
+    checkMedals(1800)
+    celebrateIfRoundDone(sutraId, roundsBefore, 1400)
+  } catch (e) {
+    toast.error(describeError(e))
+  } finally {
+    busy.value = null
+  }
+}
 
-    /*
-     * Each sutra keeps its own set. The gem for a chapter is fixed by
-     * that chapter's position within its sutra, so 地藏經 品三 always
-     * yields the same Buddha and constellation — and the華嚴經 gem of
-     * the same number is a different stone in a different collection.
-     */
-    if (firstEver) {
-      const idx = (CHAPTERS[sutraId]?.items.findIndex((c) => c.id === chapter.id) ?? 0) + 1
-      const pair = String(Math.min(idx, 88)).padStart(3, '0')
+/**
+ * One tap for a whole 部: +1 on every chapter at once, for people who
+ * finished the sutra in one sitting and would otherwise tap 13 circles.
+ * Gems are earned silently — the completion ceremony celebrates the set.
+ */
+// A per-sutra busy sentinel, so only the tapped card's button shows its
+// spinner while a whole-sutra pass runs.
+function wholeKey(sutraId: string): string {
+  return `${ALL}:${sutraId}`
+}
 
-      // The 88 Buddhas and their constellations belong to 華嚴經 alone —
-      // that mapping was built around its eighty volumes. Gems from the
-      // other sutras are identified by their shape instead.
-      const isAvatamsaka = sutraId === 'avatamsaka'
+async function recordWhole(sutraId: string) {
+  if (busy.value) return
+  const items = CHAPTERS[sutraId]?.items ?? []
+  if (!items.length) return
+  busy.value = wholeKey(sutraId)
 
-      await gemStore.earnGem({
-        source: 'sutra_volume',
-        sourceRef: `${sutraId}/${chapter.id}`,
-        ...(isAvatamsaka ? { buddhaId: `b${pair}`, constellationId: `c${pair}` } : {}),
-        ...(SUTRA_GEM_SHAPE[sutraId] ? { geometry: SUTRA_GEM_SHAPE[sutraId] } : {}),
-      })
+  const roundsBefore = sutras.value.find((x) => x.id === sutraId)?.rounds ?? 0
+  try {
+    for (const c of items) {
+      await progressStore.markVolumeComplete(sutraId, slotKey(c.id, 'recite'))
+      await earnGemIfFirst(sutraId, c.id, false)
+      await dailyStore.markDone(`${sutraId}/${c.id}`)
     }
-
-    // Completing every chapter once more finishes a 部
-    const meta = sutras.value.find((x) => x.id === sutraId)
-    if (meta && meta.rounds > roundsBefore) {
-      setTimeout(() => {
-        completed.value = { id: sutraId, title: meta.titleZh, round: meta.rounds }
-      }, 1400)
-    }
-    void updated
+    await streakStore.touchToday()
+    checkMedals(1000)
+    celebrateIfRoundDone(sutraId, roundsBefore, 600)
   } catch (e) {
     toast.error(describeError(e))
   } finally {
@@ -446,7 +567,12 @@ async function record(chapter: ChapterMeta) {
 
 onMounted(async () => {
   try {
-    await Promise.all([progressStore.loadAllProgress(), gemStore.loadGems()])
+    await Promise.all([
+      progressStore.loadAllProgress(),
+      gemStore.loadGems(),
+      streakStore.load(),
+      dailyStore.load(),
+    ])
   } catch (e) {
     toast.error(describeError(e))
   }
@@ -494,8 +620,130 @@ onMounted(async () => {
   letter-spacing: 0.06em;
 }
 
-.memo {
+/* — 今日功課籤 ————————————————————————————————— */
+.draw {
   margin-top: var(--s5);
+  padding: var(--s3) var(--s4) var(--s4);
+  border-radius: var(--r-lg);
+  background:
+    radial-gradient(circle at 88% 0%, rgba(251, 191, 36, 0.14), transparent 55%),
+    rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(251, 191, 36, 0.26);
+  transition: border-color var(--base) var(--ease), background var(--base) var(--ease);
+}
+
+.draw--done {
+  border-color: rgba(134, 239, 172, 0.32);
+  background: rgba(134, 239, 172, 0.06);
+}
+
+.draw__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s3);
+}
+
+.draw__ribbon {
+  padding: 4px var(--s3);
+  border-radius: var(--r-full);
+  font-size: var(--text-micro);
+  letter-spacing: 0.2em;
+  text-indent: 0.2em;
+  color: var(--amber);
+  background: rgba(251, 191, 36, 0.12);
+  border: 1px solid rgba(251, 191, 36, 0.3);
+}
+.draw--done .draw__ribbon {
+  color: #86efac;
+  background: rgba(134, 239, 172, 0.12);
+  border-color: rgba(134, 239, 172, 0.3);
+}
+
+.draw__rank {
+  font-size: var(--text-micro);
+  letter-spacing: 0.12em;
+  color: var(--text-faint);
+}
+
+.draw__list {
+  list-style: none;
+  margin-top: var(--s3);
+  display: grid;
+  gap: var(--s2);
+}
+
+.ditem {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: var(--s3);
+  padding: var(--s2) var(--s3);
+  border-radius: var(--r-md);
+  text-align: left;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--hairline);
+  transition: background var(--fast) var(--ease);
+}
+.ditem:hover {
+  background: rgba(255, 255, 255, 0.08);
+}
+.ditem:active {
+  transform: scale(0.99);
+}
+
+.ditem__check {
+  flex-shrink: 0;
+  width: 20px;
+  height: 20px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  border: 1px solid var(--hairline-strong);
+  color: #071108;
+}
+.ditem__check--on {
+  background: #86efac;
+  border-color: #86efac;
+}
+
+.ditem__main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.ditem__sutra {
+  font-size: var(--text-micro);
+  letter-spacing: 0.1em;
+  color: var(--text-faint);
+}
+
+.ditem__chapter {
+  margin-top: 1px;
+  font-family: var(--font-serif);
+  font-size: var(--text-body);
+  letter-spacing: 0.06em;
+}
+
+.ditem__go {
+  flex-shrink: 0;
+  color: var(--text-faint);
+  font-size: 1.1rem;
+}
+
+.draw__all-done {
+  margin-top: var(--s3);
+  text-align: center;
+  font-size: var(--text-caption);
+  letter-spacing: 0.16em;
+  text-indent: 0.16em;
+  color: #86efac;
+}
+
+.memo {
+  margin-top: var(--s3);
 }
 
 .memo__row {
@@ -564,6 +812,27 @@ onMounted(async () => {
   background: rgba(167, 139, 250, 0.1);
 }
 
+.range__row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s2);
+}
+
+.range__mastery {
+  flex-shrink: 0;
+  font-size: 11px;
+  letter-spacing: 1px;
+}
+
+.star {
+  color: rgba(255, 255, 255, 0.14);
+}
+
+.star--on {
+  color: var(--amber);
+}
+
 .range__name {
   font-size: var(--text-body);
   letter-spacing: 0.06em;
@@ -587,6 +856,41 @@ onMounted(async () => {
   font-size: var(--text-micro);
   line-height: 1.7;
   color: var(--text-faint);
+}
+
+/* — 圓滿一部 standalone action on each sutra card —————— */
+.whole {
+  margin-top: var(--s3);
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--s2);
+  padding: var(--s2) var(--s3);
+  border-radius: var(--r-md);
+  font-size: var(--text-caption);
+  letter-spacing: 0.06em;
+  color: var(--amber);
+  background: rgba(251, 191, 36, 0.1);
+  border: 1px solid rgba(251, 191, 36, 0.3);
+  transition:
+    background var(--fast) var(--ease),
+    opacity var(--fast) var(--ease);
+}
+.whole:hover {
+  background: rgba(251, 191, 36, 0.18);
+}
+.whole:active {
+  transform: scale(0.99);
+}
+.whole:disabled {
+  opacity: 0.5;
+}
+.whole--busy {
+  opacity: 0.6;
+}
+.whole__ico {
+  flex-shrink: 0;
 }
 
 .drill-cta {
@@ -619,10 +923,6 @@ onMounted(async () => {
 }
 
 /* — Chapter list ——————————————————————————— */
-.mode-tabs {
-  margin-bottom: var(--s4);
-}
-
 .chapters {
   list-style: none;
 }

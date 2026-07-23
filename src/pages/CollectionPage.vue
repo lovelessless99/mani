@@ -13,6 +13,16 @@
     </div>
 
     <template v-else>
+      <!-- Enter the 3D land the gems build -->
+      <button class="enter-land" type="button" @click="router.push('/pureland')">
+        <div class="enter-land__glow" />
+        <div class="enter-land__main">
+          <p class="enter-land__title">{{ landName || '我的淨土' }}</p>
+          <p class="enter-land__sub tnum">{{ earned.length }} 顆寶石聚成 · 進入巡禮</p>
+        </div>
+        <AppIcon name="chevronRight" :size="18" class="enter-land__go" />
+      </button>
+
       <section v-for="set in sets" :key="set.id" class="set">
         <div class="set__head">
           <h2 class="set__title">{{ set.title }}</h2>
@@ -63,10 +73,13 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
+import { useRouter } from 'vue-router'
 import GemCard from 'src/components/gems/GemCard.vue'
 import GemViewer from 'src/components/gems/GemViewer.vue'
 import AppSpinner from 'src/components/ui/AppSpinner.vue'
 import AppButton from 'src/components/ui/AppButton.vue'
+import AppIcon from 'src/components/ui/AppIcon.vue'
+import { usePureLandStore } from 'src/stores/purelandStore'
 import SutraCompleteCeremony from 'src/components/practice/SutraCompleteCeremony.vue'
 import guardiansData from 'src/data/meta/sutra-guardians.json'
 import { useGemStore } from 'src/stores/gemStore'
@@ -80,8 +93,11 @@ const CHAPTERS = chaptersData as unknown as Record<string, { items: { id: string
 const GEM_CAP = 88
 
 const gemStore = useGemStore()
+const pureland = usePureLandStore()
+const router = useRouter()
 const toast = useToast()
 const selectedGem = ref<GemRecord | null>(null)
+const landName = computed(() => pureland.name)
 
 const earned = computed(() => gemStore.gemsList)
 
@@ -158,7 +174,7 @@ function summon(sutraId: string) {
 
 onMounted(async () => {
   try {
-    await gemStore.loadGems()
+    await Promise.all([gemStore.loadGems(), pureland.load()])
   } catch (e) {
     toast.error(describeError(e))
   }
@@ -191,6 +207,77 @@ onMounted(async () => {
   display: flex;
   justify-content: center;
   padding: var(--s7) 0;
+}
+
+/* — Enter the 淨土 ——————————————————————————— */
+.enter-land {
+  position: relative;
+  width: 100%;
+  margin-top: var(--s5);
+  display: flex;
+  align-items: center;
+  gap: var(--s3);
+  padding: var(--s4);
+  border-radius: var(--r-lg);
+  overflow: hidden;
+  text-align: left;
+  background:
+    radial-gradient(circle at 88% 50%, rgba(167, 139, 250, 0.22), transparent 60%),
+    linear-gradient(120deg, rgba(96, 165, 250, 0.14), rgba(167, 139, 250, 0.1));
+  border: 1px solid rgba(167, 139, 250, 0.34);
+  transition: transform var(--fast) var(--ease), border-color var(--base) var(--ease);
+}
+.enter-land:hover {
+  transform: translateY(-1px);
+  border-color: rgba(167, 139, 250, 0.55);
+}
+.enter-land:active {
+  transform: scale(0.99);
+}
+
+.enter-land__glow {
+  position: absolute;
+  right: -20px;
+  top: 50%;
+  width: 90px;
+  height: 90px;
+  transform: translateY(-50%);
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(196, 181, 253, 0.55), transparent 70%);
+  filter: blur(10px);
+  animation: land-glow 4s ease-in-out infinite;
+}
+
+@keyframes land-glow {
+  50% {
+    opacity: 0.6;
+    transform: translateY(-50%) scale(1.15);
+  }
+}
+
+.enter-land__main {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+}
+
+.enter-land__title {
+  font-family: var(--font-serif);
+  font-size: 1.2rem;
+  letter-spacing: 0.12em;
+}
+
+.enter-land__sub {
+  margin-top: 3px;
+  font-size: var(--text-micro);
+  letter-spacing: 0.08em;
+  color: var(--text-dim);
+}
+
+.enter-land__go {
+  position: relative;
+  color: var(--text-faint);
+  flex-shrink: 0;
 }
 
 .set {

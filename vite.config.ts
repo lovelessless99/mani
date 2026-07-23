@@ -41,6 +41,9 @@ export default defineConfig({
     vue({ ...templateCompilerOptions }),
     VitePWA({
       registerType: 'autoUpdate',
+      // Resolve the virtual:pwa-register module in `vite` dev too, so the
+      // install/update composable does not 500 the dev server.
+      devOptions: { enabled: true, type: 'module' },
       includeAssets: ['favicon.svg', 'icons/apple-touch-icon.png', 'icons/favicon-32.png'],
       manifest: {
         name: '華嚴 · 佛經修行',

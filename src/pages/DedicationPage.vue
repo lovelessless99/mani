@@ -21,6 +21,56 @@
       <p v-if="lastLabel" class="merit__last">上次迴向 · {{ lastLabel }}</p>
     </GlassCard>
 
+    <!-- 迴向目標 · 立願 -------------------------------------- -->
+    <GlassCard v-if="vow.active" class="vow">
+      <div class="vow__head">
+        <div>
+          <p class="section-label">迴向目標</p>
+          <p class="vow__target">為 {{ vow.vow?.targetName }}</p>
+        </div>
+        <button class="vow__clear" type="button" @click="onClearVow">捨願</button>
+      </div>
+      <div class="vow__meter">
+        <div class="vow__fill" :style="{ width: `${vow.ratio * 100}%` }" />
+      </div>
+      <p class="vow__nums tnum">
+        {{ vow.vow?.progress }} / {{ vow.vow?.goal }} 遍
+        <span class="t-faint">· 尚缺 {{ vow.remaining }} 遍</span>
+      </p>
+    </GlassCard>
+
+    <GlassCard v-else class="vow vow--make">
+      <p class="section-label">立願迴向</p>
+      <p class="vow__hint">為所繫念之人事,立下欲迴向的遍數,日積月累至圓滿。</p>
+      <div class="vow__form">
+        <input
+          v-model="vowTarget"
+          class="field"
+          type="text"
+          maxlength="40"
+          placeholder="迴向對象,如:先父 王公"
+        />
+        <div class="vow__goalrow">
+          <input
+            v-model.number="vowGoal"
+            class="field field--num tnum"
+            type="number"
+            min="1"
+            max="1000000"
+            placeholder="願數"
+          />
+          <span class="vow__unit">遍</span>
+          <AppButton
+            variant="glass"
+            :disabled="!canMakeVow"
+            @click="onMakeVow"
+          >
+            立願
+          </AppButton>
+        </div>
+      </div>
+    </GlassCard>
+
     <!-- Target ------------------------------------------------ -->
     <section class="block">
       <p class="section-label">迴向對象</p>
@@ -119,6 +169,7 @@ import AppButton from 'src/components/ui/AppButton.vue'
 import DedicationCeremony from 'src/components/DedicationCeremony.vue'
 import { useProgressStore } from 'src/stores/progressStore'
 import { useDedicationStore } from 'src/stores/dedicationStore'
+import { useVowStore } from 'src/stores/vowStore'
 import { getAllSutras } from 'src/services/sutraService'
 import { useToast, describeError } from 'src/composables/useToast'
 import type { MeritTotals } from 'src/types/dedication'
@@ -142,7 +193,33 @@ const targets = versesData.targets as Target[]
 
 const progressStore = useProgressStore()
 const store = useDedicationStore()
+const vow = useVowStore()
 const toast = useToast()
+
+const vowTarget = ref('')
+const vowGoal = ref<number | null>(null)
+const canMakeVow = computed(
+  () => vowTarget.value.trim().length > 0 && !!vowGoal.value && vowGoal.value > 0
+)
+
+async function onMakeVow() {
+  if (!canMakeVow.value) return
+  try {
+    await vow.setVow(vowTarget.value.trim(), Number(vowGoal.value), verseId.value)
+    vowTarget.value = ''
+    vowGoal.value = null
+  } catch (e) {
+    toast.error(describeError(e))
+  }
+}
+
+async function onClearVow() {
+  try {
+    await vow.clear()
+  } catch (e) {
+    toast.error(describeError(e))
+  }
+}
 
 const verseId = ref(verses[0].id)
 const targetId = ref(targets[0].id)
@@ -202,6 +279,13 @@ async function begin() {
       targetName: targetName.value,
       totals: totals.value,
     })
+    // Pour this offering into the standing vow, if any.
+    const offered = dedicatedMerit.value.recite + dedicatedMerit.value.memorize
+    const fulfilled = await vow.addProgress(offered)
+    if (fulfilled) {
+      toast.info(`圓滿:為 ${vow.vow?.targetName} 的迴向已達願數`)
+      vow.ackFulfilled()
+    }
     ceremonyOpen.value = true
   } catch (e) {
     toast.error(describeError(e))
@@ -216,7 +300,7 @@ function finish() {
 
 onMounted(async () => {
   try {
-    await Promise.all([progressStore.loadAllProgress(), store.loadDedications()])
+    await Promise.all([progressStore.loadAllProgress(), store.loadDedications(), vow.load()])
   } catch (e) {
     toast.error(describeError(e))
   }
@@ -235,6 +319,91 @@ onMounted(async () => {
 /* — Pending merit ——————————————————————————— */
 .merit {
   margin-top: var(--s5);
+}
+
+/* — 立願 · vow ———————————————————————————————— */
+.vow {
+  margin-top: var(--s3);
+}
+
+.vow__head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--s3);
+}
+
+.vow__target {
+  margin-top: var(--s2);
+  font-family: var(--font-serif);
+  font-size: var(--text-body);
+  letter-spacing: 0.06em;
+  color: var(--amber);
+}
+
+.vow__clear {
+  flex-shrink: 0;
+  font-size: var(--text-micro);
+  letter-spacing: 0.08em;
+  color: var(--text-faint);
+  padding: 3px var(--s2);
+  border-radius: var(--r-full);
+  border: 1px solid var(--hairline);
+}
+.vow__clear:hover {
+  color: var(--text-dim);
+}
+
+.vow__meter {
+  margin-top: var(--s3);
+  height: 6px;
+  border-radius: var(--r-full);
+  background: rgba(255, 255, 255, 0.07);
+  overflow: hidden;
+}
+
+.vow__fill {
+  height: 100%;
+  border-radius: var(--r-full);
+  background: linear-gradient(90deg, var(--amber), #fcd34d);
+  box-shadow: 0 0 12px rgba(251, 191, 36, 0.7);
+  transition: width var(--slow) var(--ease-out);
+}
+
+.vow__nums {
+  margin-top: var(--s2);
+  font-size: var(--text-caption);
+  color: var(--text-dim);
+}
+
+.vow__hint {
+  margin-top: var(--s2);
+  font-size: var(--text-micro);
+  line-height: 1.7;
+  color: var(--text-faint);
+}
+
+.vow__form {
+  margin-top: var(--s3);
+  display: flex;
+  flex-direction: column;
+  gap: var(--s3);
+}
+
+.vow__goalrow {
+  display: flex;
+  align-items: center;
+  gap: var(--s3);
+}
+
+.field--num {
+  width: 6rem;
+  text-align: center;
+}
+
+.vow__unit {
+  font-size: var(--text-caption);
+  color: var(--text-faint);
 }
 
 .merit__nums {

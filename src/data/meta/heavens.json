@@ -1,0 +1,33 @@
+[
+  { "id": "saha", "name": "娑婆穢土", "realm": "欲界", "motif": "ruin", "sky": ["#2a2320", "#0d0b0a"], "ground": "#3a3128", "blurb": "灰暗破敗的起點,待以功德之力莊嚴。" },
+  { "id": "caturmaharajika", "name": "四天王天", "realm": "欲界", "motif": "gates", "sky": ["#6b4a3a", "#241812"], "ground": "#5a4a34", "blurb": "須彌山半,持國、增長、廣目、多聞四王,各守一方。" },
+  { "id": "trayastrimsa", "name": "忉利天", "realm": "欲界", "motif": "city", "sky": ["#8a6a44", "#2c1e14"], "ground": "#6b5a3a", "blurb": "須彌山頂三十三天,中有善見城,帝釋所居,波利質多樹蔭覆天宮。" },
+  { "id": "yama", "name": "夜摩天", "realm": "欲界", "motif": "air", "sky": ["#a06a52", "#341c16"], "ground": "#7a5a44", "blurb": "始離須彌,居於虛空,無晝夜,以蓮華開合為時分,時唱快樂哉。" },
+  { "id": "tusita", "name": "兜率天", "realm": "欲界", "motif": "court", "sky": ["#c08a52", "#3c2414"], "ground": "#8a6a3a", "blurb": "知足天。內院為一生補處菩薩淨土,彌勒於此說法待時。" },
+  { "id": "nirmanarati", "name": "化樂天", "realm": "欲界", "motif": "mirage", "sky": ["#d0a05a", "#402a16"], "ground": "#9a7a44", "blurb": "自化五塵,隨心變現而受用其樂。" },
+  { "id": "paranirmita", "name": "他化自在天", "realm": "欲界", "motif": "darkpalace", "sky": ["#e0b862", "#443018"], "ground": "#a88a4a", "blurb": "欲界之頂,他化而自娛,魔王波旬所治。" },
+
+  { "id": "brahmaparisadya", "name": "梵眾天", "realm": "色界", "motif": "brahma", "sky": ["#6a86c4", "#1a2340"], "ground": "#5a72b0", "blurb": "初禪離欲,身有光明,梵天眷屬。" },
+  { "id": "brahmapurohita", "name": "梵輔天", "realm": "色界", "motif": "brahma", "sky": ["#7290cc", "#1e2846"], "ground": "#6478b8", "blurb": "初禪,輔翼大梵,行列侍衛。" },
+  { "id": "mahabrahma", "name": "大梵天", "realm": "色界", "motif": "brahma", "sky": ["#829cd6", "#222c4c", "#232323"], "ground": "#7086c4", "blurb": "初禪之主,自謂能生萬物,娑婆世界主。" },
+  { "id": "parittabha", "name": "少光天", "realm": "色界", "motif": "radiance", "sky": ["#7ba0d0", "#1e2a48"], "ground": "#6a90c8", "blurb": "二禪,身放少光。" },
+  { "id": "apramanabha", "name": "無量光天", "realm": "色界", "motif": "radiance", "sky": ["#84aede", "#203058"], "ground": "#74a0d8", "blurb": "二禪,光明轉盛,無有限量。" },
+  { "id": "abhasvara", "name": "光音天", "realm": "色界", "motif": "radiance", "sky": ["#8ec0ea", "#243a66"], "ground": "#80b4e6", "blurb": "二禪之頂,無語言,發光為音,以光傳意。" },
+  { "id": "parittasubha", "name": "少淨天", "realm": "色界", "motif": "pure", "sky": ["#88c6c0", "#204a48"], "ground": "#78bcb4", "blurb": "三禪,離喜得淨,淨樂微少。" },
+  { "id": "apramanasubha", "name": "無量淨天", "realm": "色界", "motif": "pure", "sky": ["#92d4c8", "#245450"], "ground": "#84cabe", "blurb": "三禪,淨樂增廣,無有限量。" },
+  { "id": "subhakrtsna", "name": "遍淨天", "realm": "色界", "motif": "pure", "sky": ["#9ee2cc", "#265c52"], "ground": "#90d8c2", "blurb": "三禪之頂,淨樂周遍身心。" },
+  { "id": "anabhraka", "name": "無雲天", "realm": "色界", "motif": "cloudless", "sky": ["#aad8e6", "#2a4a5a"], "ground": "#9ccede", "blurb": "四禪始,雲地已盡,居淨光中。" },
+  { "id": "punyaprasava", "name": "福生天", "realm": "色界", "motif": "cloudless", "sky": ["#b4dcea", "#2e5060"], "ground": "#a6d4e4", "blurb": "四禪,勝福所感而生。" },
+  { "id": "brhatphala", "name": "廣果天", "realm": "色界", "motif": "cloudless", "sky": ["#bee2ee", "#325664"], "ground": "#b0dcea", "blurb": "四禪凡夫所得最勝果報。" },
+  { "id": "asamjnisattva", "name": "無想天", "realm": "色界", "motif": "cloudless", "sky": ["#c8e6f0", "#365a68"], "ground": "#bce2ee", "blurb": "外道所歸,心想不行,如冰魚蟄蟲。" },
+  { "id": "avrha", "name": "無煩天", "realm": "色界", "motif": "suddhavasa", "sky": ["#cfeaf2", "#3a5e6c"], "ground": "#c4e6f0", "blurb": "五淨居天始,三果聖人所居,無所煩雜。" },
+  { "id": "atapa", "name": "無熱天", "realm": "色界", "motif": "suddhavasa", "sky": ["#d6eef4", "#3e6270"], "ground": "#cceaf2", "blurb": "淨居天,意樂清涼,無有熱惱。" },
+  { "id": "sudrsa", "name": "善見天", "realm": "色界", "motif": "suddhavasa", "sky": ["#dcf0f6", "#426674"], "ground": "#d4eef4", "blurb": "淨居天,見十方界極為清徹。" },
+  { "id": "sudarsana", "name": "善現天", "realm": "色界", "motif": "suddhavasa", "sky": ["#e4f4f8", "#466a78"], "ground": "#dcf2f6", "blurb": "淨居天,妙用現前,無有滯礙。" },
+  { "id": "akanistha", "name": "色究竟天", "realm": "色界", "motif": "suddhavasa", "sky": ["#eef8fb", "#4a6e7c"], "ground": "#e6f6fa", "blurb": "色界之頂,有形之極,摩醯首羅所居。" },
+
+  { "id": "akasanantya", "name": "空無邊處天", "realm": "無色界", "motif": "formless", "sky": ["#3a2f5e", "#0a0714"], "ground": "#2a2148", "blurb": "捨色緣空,觀虛空無邊,無復形質。" },
+  { "id": "vijnananantya", "name": "識無邊處天", "realm": "無色界", "motif": "formless", "sky": ["#463868", "#0c0818"], "ground": "#342858", "blurb": "捨空緣識,觀心識無邊。" },
+  { "id": "akimcanya", "name": "無所有處天", "realm": "無色界", "motif": "formless", "sky": ["#52427a", "#0e0a1c"], "ground": "#3e3068", "blurb": "捨識緣無,觀都無所有。" },
+  { "id": "naivasamjna", "name": "非想非非想天", "realm": "無色界", "motif": "formless", "sky": ["#63508e", "#100c22"], "ground": "#4c3c80", "blurb": "三界之頂,非有想非無想,壽八萬大劫。" }
+]

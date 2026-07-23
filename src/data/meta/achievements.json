@@ -1,0 +1,18 @@
+[
+  { "id": "first-step", "name": "初發心", "desc": "記錄第一遍功課", "metric": "reciteTotal", "goal": 1, "tier": "bronze", "glyph": "☸" },
+  { "id": "gem-first", "name": "初集寶", "desc": "獲得第一顆寶石", "metric": "gems", "goal": 1, "tier": "bronze", "glyph": "◈" },
+  { "id": "streak-3", "name": "日日是好日", "desc": "連續三日不間斷", "metric": "streak", "goal": 3, "tier": "bronze", "glyph": "🌱" },
+  { "id": "dedicate-first", "name": "初迴向", "desc": "第一次迴向功德", "metric": "dedications", "goal": 1, "tier": "bronze", "glyph": "🪷" },
+  { "id": "streak-7", "name": "七日不斷", "desc": "連續七日精進", "metric": "streak", "goal": 7, "tier": "silver", "glyph": "🌿" },
+  { "id": "streak-21", "name": "廿一日成習", "desc": "連續二十一日,習慣已成", "metric": "streak", "goal": 21, "tier": "silver", "glyph": "🌳" },
+  { "id": "round-first", "name": "初圓滿", "desc": "圓滿任一部經一遍", "metric": "maxRounds", "goal": 1, "tier": "silver", "glyph": "○" },
+  { "id": "memorize-50", "name": "勤於背經", "desc": "累計背經五十遍", "metric": "memorizeTotal", "goal": 50, "tier": "silver", "glyph": "✍" },
+  { "id": "master-chapter", "name": "過目成誦", "desc": "背熟一品達滾瓜爛熟", "metric": "maxMastery", "goal": 12, "tier": "silver", "glyph": "★" },
+  { "id": "gem-44", "name": "珠玉盈匣", "desc": "集滿四十四顆寶石", "metric": "gems", "goal": 44, "tier": "silver", "glyph": "◆" },
+  { "id": "dedicate-10", "name": "迴向十方", "desc": "迴向功德十次", "metric": "dedications", "goal": 10, "tier": "silver", "glyph": "❁" },
+  { "id": "streak-30", "name": "月不退轉", "desc": "連續三十日不退", "metric": "bestStreak", "goal": 30, "tier": "gold", "glyph": "🪷" },
+  { "id": "streak-100", "name": "百日築基", "desc": "連續百日,道基已固", "metric": "bestStreak", "goal": 100, "tier": "gold", "glyph": "☀" },
+  { "id": "round-10", "name": "十遍不倦", "desc": "圓滿任一部經十遍", "metric": "maxRounds", "goal": 10, "tier": "gold", "glyph": "◎" },
+  { "id": "sutras-3", "name": "遍歷三經", "desc": "圓滿三部不同的經典", "metric": "sutrasCompleted", "goal": 3, "tier": "gold", "glyph": "卍" },
+  { "id": "gem-88", "name": "八十八佛", "desc": "集滿八十八顆寶石", "metric": "gems", "goal": 88, "tier": "gold", "glyph": "✦" }
+]

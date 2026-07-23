@@ -37,6 +37,17 @@
         <p class="today__line">{{ todayLine }}</p>
       </div>
 
+      <div class="seed" :class="{ 'seed--lit': streak.shownCount > 0 }">
+        <span class="seed__glyph">{{ streak.stage.glyph }}</span>
+        <span class="seed__text">
+          <span class="seed__count tnum">{{ streak.shownCount }}</span>
+          <span class="seed__unit">天 · {{ streak.stage.name }}</span>
+        </span>
+        <span v-if="streak.nextStage" class="seed__next">
+          再 {{ streak.nextStage.at - streak.shownCount }} 天 {{ streak.nextStage.name }}
+        </span>
+      </div>
+
       <section class="ledger">
         <dl class="stats">
           <div class="stat">
@@ -68,6 +79,7 @@ import AppButton from 'src/components/ui/AppButton.vue'
 import AppIcon from 'src/components/ui/AppIcon.vue'
 import { useProgressStore } from 'src/stores/progressStore'
 import { useGemStore } from 'src/stores/gemStore'
+import { useStreakStore } from 'src/stores/streakStore'
 import { getAllSutras } from 'src/services/sutraService'
 import { useToast, describeError } from 'src/composables/useToast'
 import blessingsData from 'src/data/meta/blessings.json'
@@ -90,6 +102,7 @@ interface Figure {
 const router = useRouter()
 const progressStore = useProgressStore()
 const gemStore = useGemStore()
+const streak = useStreakStore()
 const toast = useToast()
 
 const showScene = ref(false)
@@ -165,7 +178,7 @@ onMounted(async () => {
   }
 
   try {
-    await Promise.all([progressStore.loadAllProgress(), gemStore.loadGems()])
+    await Promise.all([progressStore.loadAllProgress(), gemStore.loadGems(), streak.load()])
   } catch (e) {
     toast.error(describeError(e))
   }
@@ -328,6 +341,62 @@ onMounted(async () => {
   letter-spacing: 0.06em;
   color: var(--text-dim);
   text-shadow: 0 1px 14px rgba(0, 0, 0, 0.7);
+}
+
+/* — 菩提種子 streak ————————————————————————— */
+.seed {
+  align-self: center;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s3);
+  padding: var(--s2) var(--s4);
+  border-radius: var(--r-full);
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--hairline);
+  backdrop-filter: blur(var(--blur));
+  -webkit-backdrop-filter: blur(var(--blur));
+  transition: border-color var(--base) var(--ease), background var(--base) var(--ease);
+}
+
+.seed--lit {
+  background: rgba(134, 239, 172, 0.08);
+  border-color: rgba(134, 239, 172, 0.32);
+}
+
+.seed__glyph {
+  font-size: 1.15rem;
+  line-height: 1;
+  filter: drop-shadow(0 1px 8px rgba(0, 0, 0, 0.6));
+}
+
+.seed__text {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 4px;
+}
+
+.seed__count {
+  font-size: 1.05rem;
+  font-weight: 300;
+  color: var(--text);
+}
+
+.seed--lit .seed__count {
+  color: #86efac;
+}
+
+.seed__unit {
+  font-size: var(--text-micro);
+  letter-spacing: 0.1em;
+  color: var(--text-faint);
+}
+
+.seed__next {
+  padding-left: var(--s3);
+  border-left: 1px solid var(--hairline);
+  font-size: var(--text-micro);
+  letter-spacing: 0.06em;
+  color: var(--text-faint);
 }
 
 .stats {

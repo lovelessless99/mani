@@ -197,6 +197,7 @@ import AppButton from 'src/components/ui/AppButton.vue'
  */
 
 interface Section {
+  id: string
   name: string
   gist?: string
   paragraphs: string[]
@@ -210,7 +211,9 @@ const props = defineProps<{
   source?: string
 }>()
 
-const emit = defineEmits<{ close: []; solved: [] }>()
+// solved reports which chapter the answered question came from, so
+// mastery can be credited to the right 品 even in the 全部 range.
+const emit = defineEmits<{ close: []; solved: [chapterId: string] }>()
 
 // Which chapter the current question was drawn from, shown so the reader
 // always knows where in the sutra they are.
@@ -438,7 +441,7 @@ function check() {
   if (allRight.value) {
     correctCount.value += 1
     verdictWin.value = WINS[Math.floor(Math.random() * WINS.length)]
-    emit('solved')
+    emit('solved', activeChapter.value?.id ?? '')
   }
 }
 
@@ -564,7 +567,7 @@ function pickChain(opt: string) {
       if (chainDone.value) {
         correctCount.value += 1
         verdictWin.value = WINS[Math.floor(Math.random() * WINS.length)]
-        emit('solved')
+        emit('solved', activeChapter.value?.id ?? '')
       } else {
         makeOptions()
       }

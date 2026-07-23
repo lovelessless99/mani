@@ -7,7 +7,24 @@
     <TresLatheGeometry v-else-if="lathe" :args="[lathe, 10]" />
     <TresTetrahedronGeometry v-else :args="[1, 1]" />
 
+    <!-- Lite: a cheap faceted crystal for scenes with many stones at once
+         (the 淨土 mandala). No transmission, so dozens render without the
+         per-gem refraction pass that would stall a phone. -->
+    <TresMeshStandardMaterial
+      v-if="lite"
+      :color="params.colorHex"
+      :metalness="0.1"
+      :roughness="0.15"
+      :emissive="params.colorHex"
+      :emissiveIntensity="0.35"
+      :envMapIntensity="1.6"
+      :flatShading="faceted"
+      :transparent="true"
+      :opacity="0.9"
+    />
+
     <TresMeshPhysicalMaterial
+      v-else
       :color="'#ffffff'"
       :metalness="0"
       :roughness="roughness"
@@ -49,6 +66,8 @@ const props = defineProps<{
   params: GemParams
   scale?: number
   autoRotate?: boolean
+  /** Use the cheap crystal material — for scenes drawing many gems at once. */
+  lite?: boolean
 }>()
 
 const scale = props.scale ?? 1

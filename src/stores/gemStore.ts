@@ -37,11 +37,16 @@ export const useGemStore = defineStore('gems', () => {
    * Buddha and constellation are the caller's to decide. They only apply
    * to Avatamsaka, whose eighty volumes map onto the 88 Buddhas and
    * their constellations; gems from other sutras carry neither.
+   *
+   * `announce` triggers the unlock ceremony. A one-tap "圓滿一部" earns a
+   * whole sutra's worth of gems at once, and would fire that ceremony
+   * thirteen times over — so bulk awards pass `false` and let the single
+   * completion ceremony stand for them.
    */
-  async function earnGem(input: EarnGemInput): Promise<GemRecord> {
+  async function earnGem(input: EarnGemInput, announce = true): Promise<GemRecord> {
     const gem = await createGem(input)
     gemsMap.value[gem.id] = gem
-    pendingUnlock.value = gem
+    if (announce) pendingUnlock.value = gem
     return gem
   }
 

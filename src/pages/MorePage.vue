@@ -41,6 +41,34 @@
       <AppButton variant="glass" block class="account__out" @click="signOut">登出</AppButton>
     </GlassCard>
 
+    <!-- Achievements -->
+    <GlassCard class="setting" clickable @click="router.push('/achievements')">
+      <div class="row">
+        <AppIcon name="sparkle" :size="20" class="row__icon" />
+        <div class="row__main">
+          <h2 class="row__title">成就</h2>
+          <p class="row__desc">
+            已獲 {{ achievements.unlockedCount }} / {{ achievements.list.length }} 面獎牌
+          </p>
+        </div>
+        <AppIcon name="chevronRight" :size="18" class="row__icon" />
+      </div>
+    </GlassCard>
+
+    <!-- Working settings -->
+    <GlassCard class="setting setting--tight" clickable @click="onToggleChime">
+      <div class="row">
+        <AppIcon name="sparkle" :size="20" class="row__icon" />
+        <div class="row__main">
+          <h2 class="row__title">頌缽音</h2>
+          <p class="row__desc">記錄與圓滿時輕鳴一缽</p>
+        </div>
+        <span class="switch" :class="{ 'switch--on': chime.enabled.value }">
+          <span class="switch__dot" />
+        </span>
+      </div>
+    </GlassCard>
+
     <ul class="soon">
       <li v-for="item in planned" :key="item.title">
         <GlassCard>
@@ -64,12 +92,38 @@ import AppIcon from 'src/components/ui/AppIcon.vue'
 import AppButton from 'src/components/ui/AppButton.vue'
 import { useAuthStore } from 'src/stores/authStore'
 import { useToast, describeError } from 'src/composables/useToast'
+import { useChime } from 'src/composables/useChime'
+import { useAchievementStore } from 'src/stores/achievementStore'
+import { useProgressStore } from 'src/stores/progressStore'
+import { useGemStore } from 'src/stores/gemStore'
+import { useStreakStore } from 'src/stores/streakStore'
+import { useDedicationStore } from 'src/stores/dedicationStore'
+import { useRouter } from 'vue-router'
 
-import { ref } from 'vue'
+import { onMounted, ref } from 'vue'
 
 const auth = useAuthStore()
 const toast = useToast()
+const chime = useChime()
+const achievements = useAchievementStore()
+const router = useRouter()
 const error = ref('')
+
+// The medal count on the card needs every metric loaded.
+onMounted(() => {
+  Promise.all([
+    useProgressStore().loadAllProgress(),
+    useGemStore().loadGems(),
+    useStreakStore().load(),
+    useDedicationStore().loadDedications(),
+    achievements.load(),
+  ]).catch(() => {})
+})
+
+// Toggling on rings a small confirmation so the choice is audible.
+function onToggleChime() {
+  chime.toggle()
+}
 
 async function signIn() {
   error.value = ''
@@ -157,9 +211,47 @@ const planned = [
   color: var(--ruby);
 }
 
+.setting {
+  margin-top: var(--s5);
+}
+
+.setting--tight {
+  margin-top: var(--s3);
+}
+
+.switch {
+  flex-shrink: 0;
+  width: 42px;
+  height: 24px;
+  border-radius: var(--r-full);
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid var(--hairline);
+  padding: 2px;
+  transition: background var(--base) var(--ease), border-color var(--base) var(--ease);
+}
+
+.switch--on {
+  background: rgba(134, 239, 172, 0.28);
+  border-color: rgba(134, 239, 172, 0.5);
+}
+
+.switch__dot {
+  display: block;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: #fff;
+  transform: translateX(0);
+  transition: transform var(--base) var(--ease-out);
+}
+
+.switch--on .switch__dot {
+  transform: translateX(18px);
+}
+
 .soon {
   list-style: none;
-  margin-top: var(--s5);
+  margin-top: var(--s3);
 }
 
 .soon > li + li {

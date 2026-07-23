@@ -24,6 +24,7 @@ export async function migrateGuestData(): Promise<void> {
   await mergeProgress(snap.progress as unknown as Record<string, SutraProgress>)
   await mergeGems(snap.gems as unknown as Record<string, Omit<GemRecord, 'id'>>)
   await mergeDedications(snap.dedications as unknown as Record<string, Omit<DedicationRecord, 'id'>>)
+  await mergeStats(snap.stats as unknown as Record<string, Record<string, unknown>>)
 
   local.clearAll()
 }
@@ -66,6 +67,43 @@ async function mergeGems(localGems: Record<string, Omit<GemRecord, 'id'>>): Prom
     if (seen.has(gem.sourceRef)) continue
     await addDoc(userCollection('gems'), gem)
     seen.add(gem.sourceRef)
+  }
+}
+
+interface StreakDoc {
+  count: number
+  best: number
+  total: number
+  lastDay: string
+}
+
+/**
+ * Guest `stats` docs: the 菩提種子 streak, the 立願 vow, the achievement
+ * seen-list. The streak is merged toward the stronger record; the others
+ * are only copied up when the account has none of its own, so signing in
+ * never overwrites progress already recorded on the account.
+ */
+async function mergeStats(localStats: Record<string, Record<string, unknown>>): Promise<void> {
+  if (!localStats) return
+
+  if (localStats.streak) {
+    const guest = localStats.streak as unknown as StreakDoc
+    const existingSnap = await getDoc(userDoc('stats', 'streak'))
+    const existing = existingSnap.exists() ? (existingSnap.data() as StreakDoc) : null
+    const keepGuestCurrent = !existing || guest.lastDay >= existing.lastDay
+    await setDoc(userDoc('stats', 'streak'), {
+      count: keepGuestCurrent ? guest.count : existing.count,
+      lastDay: keepGuestCurrent ? guest.lastDay : existing.lastDay,
+      best: Math.max(guest.best ?? 0, existing?.best ?? 0),
+      total: Math.max(guest.total ?? 0, existing?.total ?? 0),
+    })
+  }
+
+  for (const id of ['vow', 'achievements', 'pureland', 'daily', 'heaven'] as const) {
+    const guestDoc = localStats[id]
+    if (!guestDoc || Object.keys(guestDoc).length === 0) continue
+    const existingSnap = await getDoc(userDoc('stats', id))
+    if (!existingSnap.exists()) await setDoc(userDoc('stats', id), guestDoc)
   }
 }
 

@@ -32,3 +32,4 @@ coverage/
 
 # Quasar build artifacts (migrated off Quasar)
 /.quasar/
+dev-dist

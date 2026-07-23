@@ -1,0 +1,9 @@
+[
+  { "at": 0, "name": "初學", "epithet": "初入法門", "huayan": 1, "others": 1 },
+  { "at": 30, "name": "行者", "epithet": "日課不輟", "huayan": 1, "others": 1 },
+  { "at": 100, "name": "精進行者", "epithet": "精進不退", "huayan": 2, "others": 1 },
+  { "at": 300, "name": "純熟行者", "epithet": "誦持純熟", "huayan": 2, "others": 2 },
+  { "at": 800, "name": "法將", "epithet": "荷擔法藏", "huayan": 3, "others": 2 },
+  { "at": 2000, "name": "大心菩薩", "epithet": "廣發大心", "huayan": 3, "others": 3 },
+  { "at": 5000, "name": "華嚴海會", "epithet": "深入華嚴", "huayan": 4, "others": 3 }
+]

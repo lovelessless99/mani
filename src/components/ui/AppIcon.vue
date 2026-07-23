@@ -112,6 +112,9 @@ const ICONS: Record<string, IconDef> = {
     ],
   },
   chevronRight: { paths: ['M9.5 5.5 16 12l-6.5 6.5'] },
+  edit: {
+    paths: ['M4 20h4L18.5 9.5a2 2 0 0 0-2.83-2.83L5 17.2z', 'M14 8l2.8 2.8'],
+  },
   sun: {
     rings: [[12, 12, 4.2]],
     paths: [
