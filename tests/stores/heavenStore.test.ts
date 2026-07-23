@@ -9,6 +9,18 @@ vi.mock('src/services/gemService', () => ({
   getAllGems: vi.fn(),
   createGem: vi.fn(),
 }))
+// progressStore (pulled in for the 華嚴 gate) reaches sutraService, which
+// imports the Firebase boot module — that throws under CI where the test
+// step has no API key. Stub both, as progressStore.test.ts does.
+vi.mock('src/services/progressService', () => ({
+  getProgress: vi.fn(),
+  recordRecitation: vi.fn(),
+}))
+vi.mock('src/services/sutraService', () => ({
+  getAllSutras: vi.fn(() => []),
+  getSutraMeta: vi.fn(),
+  loadVolume: vi.fn(),
+}))
 
 import { getDocData, setDocData } from 'src/services/dataAccess'
 import { getAllGems } from 'src/services/gemService'
