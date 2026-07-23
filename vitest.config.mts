@@ -1,5 +1,6 @@
 import { defineConfig } from 'vitest/config'
 import vue from '@vitejs/plugin-vue'
+import { templateCompilerOptions } from '@tresjs/core'
 import { fileURLToPath } from 'node:url'
 
 export default defineConfig({
@@ -12,7 +13,7 @@ export default defineConfig({
       'tests/**/*.{spec,test}.{ts,js}',
     ],
   },
-  plugins: [vue()],
+  plugins: [vue({ ...templateCompilerOptions })],
   resolve: {
     alias: {
       src: fileURLToPath(new URL('./src', import.meta.url)),

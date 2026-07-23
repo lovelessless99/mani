@@ -1,0 +1,66 @@
+{
+  "_note": "迴向偈。`lines` is split for line-by-line reveal during the ceremony. `source` names where the verse comes from; where a verse is in general liturgical use without a single canonical origin, that is said plainly rather than invented.",
+
+  "verses": [
+    {
+      "id": "universal",
+      "name": "普賢迴向偈",
+      "source": "《妙法蓮華經·化城喻品》",
+      "lines": ["願以此功德", "普及於一切", "我等與眾生", "皆共成佛道"],
+      "gloss": "最通行的四句迴向,不擇對象,功德平等施於一切眾生。"
+    },
+    {
+      "id": "pureland",
+      "name": "淨土迴向偈",
+      "source": "叢林晚課通用",
+      "lines": [
+        "願以此功德",
+        "莊嚴佛淨土",
+        "上報四重恩",
+        "下濟三塗苦",
+        "若有見聞者",
+        "悉發菩提心",
+        "盡此一報身",
+        "同生極樂國"
+      ],
+      "gloss": "八句具足報恩與濟苦兩義。四重恩指父母、眾生、國土、三寶。"
+    },
+    {
+      "id": "ksitigarbha",
+      "name": "地藏迴向偈",
+      "source": "地藏法門通用",
+      "lines": ["願以此功德", "迴向諸眾生", "離苦得安樂", "速證菩提果"],
+      "gloss": "隨地藏本願,偏重拔苦與濟度幽冥。"
+    },
+    {
+      "id": "obstacles",
+      "name": "消障迴向偈",
+      "source": "課誦通用",
+      "lines": ["願消三障諸煩惱", "願得智慧真明了", "普願罪障悉消除", "世世常行菩薩道"],
+      "gloss": "三障即煩惱障、業障、報障。此偈側重自身障礙的消解。"
+    },
+    {
+      "id": "samantabhadra",
+      "name": "普賢行願迴向",
+      "source": "《華嚴經·普賢行願品》",
+      "lines": ["所有禮讚供養福", "請佛住世轉法輪", "隨喜懺悔諸善根", "迴向眾生及佛道"],
+      "gloss": "總攝十大願王之功德,一併迴向眾生與佛道。"
+    },
+    {
+      "id": "medicine",
+      "name": "藥師迴向偈",
+      "source": "藥師法門通用",
+      "lines": ["願以此功德", "消除宿現業", "增長諸福慧", "圓成勝善根"],
+      "gloss": "隨藥師本願,偏重消業、延壽與現世安樂。"
+    }
+  ],
+
+  "targets": [
+    { "id": "all", "name": "法界一切眾生", "hint": "不擇親疏,平等迴向" },
+    { "id": "creditors", "name": "累劫冤親債主", "hint": "解冤釋結,各離苦惱" },
+    { "id": "parents", "name": "現世父母師長", "hint": "願消災障,福壽增長" },
+    { "id": "ancestors", "name": "歷代宗親眷屬", "hint": "願離幽冥,得生善處" },
+    { "id": "sick", "name": "病苦中的人", "hint": "願身心安樂,眾病悉除" },
+    { "id": "custom", "name": "自訂對象", "hint": "寫下心中所繫念的人或事" }
+  ]
+}

@@ -7,7 +7,7 @@ vi.mock('firebase/firestore', () => ({
   addDoc: vi.fn(),
   query: vi.fn(() => ({})),
 }))
-vi.mock('src/boot/firebase', () => ({ db: {} }))
+vi.mock('src/boot/firebase', () => ({ db: {}, auth: { currentUser: { uid: 'test-uid' } } }))
 
 import { generateGemParams, createGem, getAllGems } from 'src/services/gemService'
 import { getDocs, addDoc } from 'firebase/firestore'

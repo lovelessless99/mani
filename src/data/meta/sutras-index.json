@@ -8,6 +8,14 @@
     "description": "最廣為流傳的般若經典，共260字。"
   },
   {
+    "id": "diamond",
+    "titleZh": "金剛般若波羅蜜經",
+    "titleEn": "Diamond Sutra",
+    "totalVolumes": 1,
+    "storageType": "bundled",
+    "description": "般若部核心經典，破一切相，能斷金剛。"
+  },
+  {
     "id": "avatamsaka",
     "titleZh": "大方廣佛華嚴經",
     "titleEn": "Avatamsaka Sutra",
@@ -19,16 +27,16 @@
     "id": "ksitigarbha",
     "titleZh": "地藏菩薩本願經",
     "titleEn": "Ksitigarbha Sutra",
-    "totalVolumes": 3,
-    "storageType": "remote",
-    "description": "宣說地藏菩薩本願的重要經典。"
+    "totalVolumes": 13,
+    "storageType": "bundled",
+    "description": "宣說地藏菩薩本願的重要經典，共十三品。"
   },
   {
     "id": "shurangama",
     "titleZh": "大佛頂首楞嚴經",
     "titleEn": "Shurangama Sutra",
     "totalVolumes": 10,
-    "storageType": "remote",
+    "storageType": "bundled",
     "description": "闡述楞嚴咒及修行法要的重要經典，共十卷。"
   },
   {

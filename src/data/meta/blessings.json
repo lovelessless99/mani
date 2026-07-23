@@ -1,0 +1,171 @@
+{
+  "_note": "Encouragement shown after each recorded recitation. Each figure's lines are written from that figure's own characteristic vow or quality — 地藏 speaks of not abandoning anyone, 常不輕 of never slighting another's potential — so the praise stays specific rather than generic. `milestones` override the ordinary line at counts that carry traditional weight.",
+
+  "figures": [
+    {
+      "id": "guanyin",
+      "name": "觀世音菩薩",
+      "epithet": "大慈大悲",
+      "color": "#7dd3fc",
+      "lines": [
+        "汝之誦念，我已聞之。聲聲入耳，念念在心。",
+        "世間苦聲甚多，汝願以清淨音相和，此心可貴。",
+        "不必求聞於人，能自聞其心，即是觀音法門。"
+      ]
+    },
+    {
+      "id": "ksitigarbha",
+      "name": "地藏王菩薩",
+      "epithet": "大願地藏",
+      "color": "#34d399",
+      "lines": [
+        "我於幽冥處未曾捨一眾生，汝於忙碌中亦未捨此一卷，善哉。",
+        "願不在大小，在能持久。汝今日之一遍，即是願力。",
+        "眾生度盡方證菩提。汝肯起步，路便不遠。"
+      ]
+    },
+    {
+      "id": "manjushri",
+      "name": "文殊師利菩薩",
+      "epithet": "大智文殊",
+      "color": "#a78bfa",
+      "lines": [
+        "讀誦非為記誦，在能斷疑。汝今又近一分明白。",
+        "智慧如劍，日日磨之則利。今日汝已磨過。",
+        "不解其義亦無妨，先與經文相熟，義自現前。"
+      ]
+    },
+    {
+      "id": "samantabhadra",
+      "name": "普賢菩薩",
+      "epithet": "大行普賢",
+      "color": "#fbbf24",
+      "lines": [
+        "十大願王，願願皆須行之。汝今行矣。",
+        "虛空有盡，我願無窮。汝之念念相續，正合此意。",
+        "說一丈不如行一尺。汝今日所行，我為汝喜。"
+      ]
+    },
+    {
+      "id": "bhaisajyaguru",
+      "name": "藥師琉璃光如來",
+      "epithet": "消災延壽",
+      "color": "#2dd4bf",
+      "lines": [
+        "身心之疾，皆由躁動。汝能靜坐誦持，藥已在其中。",
+        "琉璃光照，內外明澈。願汝身心俱得清涼。",
+        "願汝所求圓滿，眾病悉除，身心安樂。"
+      ]
+    },
+    {
+      "id": "amitabha",
+      "name": "阿彌陀佛",
+      "epithet": "無量光壽",
+      "color": "#fb923c",
+      "lines": [
+        "光明無量，照十方國。汝之一念，我皆攝受。",
+        "但持名號，不論多寡，我皆不捨。",
+        "汝今念我，如子憶母。母子相憶，何有隔閡。"
+      ]
+    },
+    {
+      "id": "shakyamuni",
+      "name": "本師釋迦牟尼佛",
+      "epithet": "娑婆教主",
+      "color": "#f0abfc",
+      "lines": [
+        "我所說法，如筏喻者。汝肯上筏，便已離岸。",
+        "不放逸者，得不死處。汝今日之精進，我見之矣。",
+        "法不在遠，在汝日日肯持。善哉，善哉。"
+      ]
+    },
+    {
+      "id": "mahasthama",
+      "name": "大勢至菩薩",
+      "epithet": "念佛圓通",
+      "color": "#60a5fa",
+      "lines": [
+        "都攝六根，淨念相繼。汝今日又續一念。",
+        "如染香人，身有香氣。誦持既久，自有薰習。",
+        "不假方便，自得心開。但持之勿斷。"
+      ]
+    },
+    {
+      "id": "maitreya",
+      "name": "彌勒菩薩",
+      "epithet": "當來下生",
+      "color": "#facc15",
+      "lines": [
+        "笑口常開，何須急躁。修行是長路，汝且緩行。",
+        "今日不足，明日再續。我在龍華，等得起。",
+        "大肚能容，先容得下自己的懈怠，再談精進。"
+      ]
+    },
+    {
+      "id": "vairocana",
+      "name": "毘盧遮那如來",
+      "epithet": "清淨法身",
+      "color": "#c4b5fd",
+      "lines": [
+        "法界無邊，一念周遍。汝之一遍，非小事也。",
+        "光明遍照，無有內外。汝誦經時，即在光中。",
+        "一即一切，一切即一。此卷之功，通於法界。"
+      ]
+    },
+    {
+      "id": "sadaparibhuta",
+      "name": "常不輕菩薩",
+      "epithet": "皆當作佛",
+      "color": "#f9a8d4",
+      "lines": [
+        "我不敢輕於汝等，汝等皆當作佛。",
+        "縱有懈怠之時，其性不減。汝之佛性，未曾少過。",
+        "他人輕汝，汝勿自輕。我於汝所，深生敬意。"
+      ]
+    },
+    {
+      "id": "akasagarbha",
+      "name": "虛空藏菩薩",
+      "epithet": "福智二藏",
+      "color": "#93c5fd",
+      "lines": [
+        "福德如虛空，積之不見其增，然終不失。",
+        "汝所誦持，皆入藏中，一字不漏。",
+        "所修功德，不必記數。虛空自能記之。"
+      ]
+    }
+  ],
+
+  "milestones": [
+    {
+      "at": 1,
+      "title": "初發心",
+      "text": "初發心時，便成正覺。萬事之始，最為難得。"
+    },
+    {
+      "at": 7,
+      "title": "七遍圓滿",
+      "text": "七者，週而復始之數。汝已成一輪，可自安慰。"
+    },
+    {
+      "at": 21,
+      "title": "三七日滿",
+      "text": "三七二十一日，古來修法之期。汝今滿之。"
+    },
+    {
+      "at": 49,
+      "title": "七七圓滿",
+      "text": "七七四十九，超薦之數，功德廣被。願以此功德，迴向法界。"
+    },
+    {
+      "at": 108,
+      "title": "百八圓滿",
+      "text": "百八煩惱，一一誦除。此非小果，汝當珍重。"
+    },
+    {
+      "at": 1000,
+      "title": "千遍圓滿",
+      "text": "千遍功成，經義自現。此後所讀，已非昔日之經。"
+    }
+  ]
+}

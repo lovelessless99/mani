@@ -1,5 +1,6 @@
 import { defineConfig } from 'vite'
 import vue from '@vitejs/plugin-vue'
+import { templateCompilerOptions } from '@tresjs/core'
 import { VitePWA } from 'vite-plugin-pwa'
 import { fileURLToPath } from 'node:url'
 
@@ -34,7 +35,10 @@ export default defineConfig({
   },
 
   plugins: [
-    vue(),
+    // TresJS needs its element names registered as custom elements —
+    // without this Vue tries to resolve <primitive> and every <Tres*> tag
+    // as a component and silently renders nothing.
+    vue({ ...templateCompilerOptions }),
     VitePWA({
       registerType: 'autoUpdate',
       includeAssets: ['favicon.svg'],

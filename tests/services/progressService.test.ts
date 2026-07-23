@@ -6,7 +6,7 @@ vi.mock('firebase/firestore', () => ({
   setDoc: vi.fn(),
   updateDoc: vi.fn(),
 }))
-vi.mock('src/boot/firebase', () => ({ db: {} }))
+vi.mock('src/boot/firebase', () => ({ db: {}, auth: { currentUser: { uid: 'test-uid' } } }))
 
 import { getDoc, setDoc } from 'firebase/firestore'
 import { recordRecitation } from 'src/services/progressService'

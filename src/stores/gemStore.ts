@@ -8,6 +8,7 @@ interface EarnGemInput {
   sourceRef: string
   buddhaId?: string
   constellationId?: string
+  geometry?: GemRecord['params']['geometry']
 }
 
 export const useGemStore = defineStore('gems', () => {
@@ -32,6 +33,11 @@ export const useGemStore = defineStore('gems', () => {
     return gemsList.value.some((g) => g.sourceRef === ref)
   }
 
+  /**
+   * Buddha and constellation are the caller's to decide. They only apply
+   * to Avatamsaka, whose eighty volumes map onto the 88 Buddhas and
+   * their constellations; gems from other sutras carry neither.
+   */
   async function earnGem(input: EarnGemInput): Promise<GemRecord> {
     const gem = await createGem(input)
     gemsMap.value[gem.id] = gem

@@ -1,7 +1,48 @@
 <template>
-  <router-view />
+  <!-- Nothing behind the gate renders until Firebase has resolved the
+       stored session, so no page ever mounts without a uid to scope its
+       data to. -->
+  <template v-if="!auth.ready">
+    <StarField />
+    <div class="boot">
+      <AppSpinner :size="36" />
+    </div>
+  </template>
+
+  <template v-else-if="!auth.isActive">
+    <StarField />
+    <LoginPage />
+  </template>
+
+  <template v-else>
+    <StarField v-if="!isHome" />
+    <RouterView />
+  </template>
+
+  <AppToast />
 </template>
 
 <script setup lang="ts">
-//
+import { computed } from 'vue'
+import { useRoute } from 'vue-router'
+import StarField from 'src/components/StarField.vue'
+import AppToast from 'src/components/ui/AppToast.vue'
+import AppSpinner from 'src/components/ui/AppSpinner.vue'
+import LoginPage from 'src/pages/LoginPage.vue'
+import { useAuthStore } from 'src/stores/authStore'
+
+const route = useRoute()
+const auth = useAuthStore()
+const isHome = computed(() => route.path === '/')
 </script>
+
+<style scoped>
+.boot {
+  position: relative;
+  z-index: 1;
+  min-height: 100vh;
+  min-height: 100dvh;
+  display: grid;
+  place-items: center;
+}
+</style>

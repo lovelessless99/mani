@@ -1,23 +1,7 @@
 .DS_Store
 .thumbs.db
 node_modules
-
-# Quasar core related directories
-.quasar
 /dist
-
-# Cordova related directories and files
-/src-cordova/node_modules
-/src-cordova/platforms
-
-# Capacitor related directories and files
-/src-capacitor/www
-/src-capacitor/android
-/src-capacitor/ios
-
-# BEX related directories and files
-/src-bex/www
-/src-bex/build
 
 # local .env files
 .env
@@ -39,3 +23,12 @@ firebase-debug.log
 
 # Coverage
 coverage/
+
+# Dev-only screenshot helper (uses playwright, not a project dependency)
+/scripts/
+
+# Ad-hoc screenshots left at the repo root during development
+/*.png
+
+# Quasar build artifacts (migrated off Quasar)
+/.quasar/

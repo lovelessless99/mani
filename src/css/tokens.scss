@@ -76,7 +76,8 @@
   --slow: 480ms;
 
   /* --- Layout ------------------------------------------------- */
-  --tabbar-h: 56px;
+  /* Floating dock: 52px pill + the gap it sits above the screen edge */
+  --tabbar-h: 76px;
   --content-max: 34rem;
   --safe-b: env(safe-area-inset-bottom, 0px);
   --safe-t: env(safe-area-inset-top, 0px);

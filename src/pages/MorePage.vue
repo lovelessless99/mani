@@ -5,6 +5,42 @@
       <p class="page-sub">排版 · 筆記 · 設定</p>
     </header>
 
+    <!-- Guest: prompt to sign in and keep the data -->
+    <GlassCard v-if="!auth.isSignedIn" class="account">
+      <div class="account__row">
+        <div class="account__avatar account__avatar--blank">訪</div>
+        <div class="account__main">
+          <p class="account__name">訪客模式</p>
+          <p class="account__email">紀錄暫存於本機</p>
+        </div>
+      </div>
+      <AppButton
+        variant="accent"
+        block
+        class="account__out"
+        :loading="auth.signingIn"
+        @click="signIn"
+      >
+        登入 Google 並同步
+      </AppButton>
+      <p v-if="error" class="account__err">{{ error }}</p>
+    </GlassCard>
+
+    <!-- Account -->
+    <GlassCard v-else class="account">
+      <div class="account__row">
+        <img v-if="auth.photoURL" :src="auth.photoURL" alt="" class="account__avatar" referrerpolicy="no-referrer" />
+        <div v-else class="account__avatar account__avatar--blank">
+          {{ (auth.displayName || auth.email || '？').slice(0, 1) }}
+        </div>
+        <div class="account__main">
+          <p class="account__name">{{ auth.displayName || '修行者' }}</p>
+          <p class="account__email">{{ auth.email }}</p>
+        </div>
+      </div>
+      <AppButton variant="glass" block class="account__out" @click="signOut">登出</AppButton>
+    </GlassCard>
+
     <ul class="soon">
       <li v-for="item in planned" :key="item.title">
         <GlassCard>
@@ -25,6 +61,35 @@
 <script setup lang="ts">
 import GlassCard from 'src/components/GlassCard.vue'
 import AppIcon from 'src/components/ui/AppIcon.vue'
+import AppButton from 'src/components/ui/AppButton.vue'
+import { useAuthStore } from 'src/stores/authStore'
+import { useToast, describeError } from 'src/composables/useToast'
+
+import { ref } from 'vue'
+
+const auth = useAuthStore()
+const toast = useToast()
+const error = ref('')
+
+async function signIn() {
+  error.value = ''
+  try {
+    await auth.signInWithGoogle()
+  } catch (e) {
+    const code = (e as { code?: string })?.code ?? ''
+    if (code === 'auth/popup-closed-by-user' || code === 'auth/cancelled-popup-request') return
+    if (code === 'auth/operation-not-allowed') error.value = '尚未在 Firebase 啟用 Google 登入'
+    else error.value = describeError(e)
+  }
+}
+
+async function signOut() {
+  try {
+    await auth.signOutUser()
+  } catch (e) {
+    toast.error(describeError(e))
+  }
+}
 
 const planned = [
   { icon: 'book', title: '印刷排版', desc: '直排 · 注音 · 自訂背景,匯出 PDF' },
@@ -34,6 +99,64 @@ const planned = [
 </script>
 
 <style scoped>
+.account {
+  margin-top: var(--s5);
+}
+
+.account__row {
+  display: flex;
+  align-items: center;
+  gap: var(--s3);
+}
+
+.account__avatar {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  object-fit: cover;
+  border: 1px solid var(--hairline-strong);
+}
+
+.account__avatar--blank {
+  display: grid;
+  place-items: center;
+  background: linear-gradient(135deg, rgba(167, 139, 250, 0.4), rgba(96, 165, 250, 0.3));
+  font-size: var(--text-title);
+  font-weight: 300;
+  color: #fff;
+}
+
+.account__main {
+  flex: 1;
+  min-width: 0;
+}
+
+.account__name {
+  font-size: var(--text-body);
+  letter-spacing: 0.06em;
+}
+
+.account__email {
+  margin-top: 2px;
+  font-size: var(--text-micro);
+  color: var(--text-faint);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.account__out {
+  margin-top: var(--s4);
+}
+
+.account__err {
+  margin-top: var(--s2);
+  font-size: var(--text-micro);
+  line-height: 1.6;
+  color: var(--ruby);
+}
+
 .soon {
   list-style: none;
   margin-top: var(--s5);

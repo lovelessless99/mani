@@ -1,0 +1,22 @@
+rules_version = '2';
+
+// Signed-in, per-user storage. Each Google account reads and writes only
+// its own documents under /users/{uid}/… — practice, gems and
+// dedications are scoped to the account that recorded them.
+//
+// The old top-level /progress, /gems and /dedications collections are no
+// longer served by the app and are closed here; any data left in them is
+// inaccessible.
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    match /users/{uid}/{document=**} {
+      allow read, write: if request.auth != null && request.auth.uid == uid;
+    }
+
+    // Everything else is closed.
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

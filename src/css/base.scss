@@ -35,31 +35,8 @@ body {
   -webkit-tap-highlight-color: transparent;
 }
 
-/* The glow the glass blurs against. Fixed so it never scrolls —
-   cards passing over it reveal different colour as you move. */
-body::before {
-  content: '';
-  position: fixed;
-  inset: -20%;
-  z-index: 0;
-  pointer-events: none;
-  background:
-    radial-gradient(
-      ellipse 45% 35% at 18% 12%,
-      rgba(167, 139, 250, 0.16) 0%,
-      transparent 68%
-    ),
-    radial-gradient(
-      ellipse 40% 32% at 84% 72%,
-      rgba(96, 165, 250, 0.13) 0%,
-      transparent 68%
-    ),
-    radial-gradient(
-      ellipse 38% 28% at 50% 96%,
-      rgba(45, 212, 191, 0.08) 0%,
-      transparent 64%
-    );
-}
+/* The animated sky lives in StarField.vue — it owns the nebula glow the
+   glass panels blur against, and persists across route changes. */
 
 #app {
   position: relative;

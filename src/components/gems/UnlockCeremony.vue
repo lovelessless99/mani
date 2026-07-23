@@ -10,10 +10,20 @@
         <div class="ceremony-gem" :class="{ 'ceremony-gem--visible': gemVisible }">
           <TresCanvas :alpha="true" :antialias="true" style="width:220px;height:220px">
             <TresPerspectiveCamera :position="[0, 0, 3.5]" :fov="45" />
+            <GemEnvironment :tint="gem.params.colorHex" :intensity="1.15" />
             <GemMesh :params="gem.params" :scale="1.3" :auto-rotate="true" />
-            <TresAmbientLight :intensity="0.4" />
-            <TresDirectionalLight :position="[3, 3, 3]" :intensity="1.5" />
-            <TresPointLight :position="[0, 2, 2]" :intensity="3" :color="gem.params.colorHex" :distance="7" />
+            <TresDirectionalLight :position="[3, 4, 4]" :intensity="2.2" color="#ffffff" />
+            <TresDirectionalLight
+              :position="[-4, -2, -3]"
+              :intensity="1.3"
+              :color="gem.params.colorHex"
+            />
+            <TresPointLight
+              :position="[0, 1.8, 2.5]"
+              :intensity="12"
+              color="#ffffff"
+              :distance="8"
+            />
           </TresCanvas>
         </div>
 
@@ -37,34 +47,15 @@
             <div v-for="i in 30" :key="i" class="bg-star" :style="bgStarStyle(i)" />
           </div>
 
-          <!-- SVG constellation lines -->
-          <svg class="constellation-svg" viewBox="0 0 280 280">
-            <defs>
-              <filter id="glow">
-                <feGaussianBlur stdDeviation="3" result="blur" />
-                <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
-              </filter>
-            </defs>
-            <g filter="url(#glow)">
-              <line
-                v-for="(line, i) in constellationLines"
-                :key="`l${i}`"
-                :x1="line.x1" :y1="line.y1" :x2="line.x2" :y2="line.y2"
-                :stroke="gem.params.colorHex"
-                stroke-width="1.5"
-                stroke-opacity="0.8"
-                :style="`stroke-dasharray:300;stroke-dashoffset:300;animation:draw-line 1s ${i*0.15}s ease-out forwards`"
-              />
-              <circle
-                v-for="(star, i) in constellationStars"
-                :key="`s${i}`"
-                :cx="star.x" :cy="star.y"
-                :r="star.main ? 5 : 3"
-                :fill="gem.params.colorHex"
-                :style="`opacity:0;animation:star-appear 0.6s ${i*0.08}s ease-out forwards`"
-              />
-            </g>
-          </svg>
+          <!-- The constellation's real stick figure -->
+          <div class="constellation-svg">
+            <ConstellationFigure
+              :constellation-id="gem.constellationId"
+              :color="gem.params.colorHex"
+              :label="constellationName"
+              :delay-in="0.2"
+            />
+          </div>
 
           <!-- Info -->
           <div class="constellation-info">
@@ -85,6 +76,8 @@
 import { ref, computed, watch, onUnmounted } from 'vue'
 import { TresCanvas } from '@tresjs/core'
 import GemMesh from './GemMesh.vue'
+import GemEnvironment from './GemEnvironment.vue'
+import ConstellationFigure from './ConstellationFigure.vue'
 import type { GemRecord, BuddhaInfo, ConstellationInfo } from 'src/types/gem'
 import buddhasData from 'src/data/meta/buddhas-88.json'
 import constellationsData from 'src/data/meta/constellations-88.json'
@@ -151,30 +144,6 @@ const buddhaName = computed(() => buddha.value?.nameZh)
 const constellationName = computed(() => constellation.value?.nameZh)
 const constellationNameEn = computed(() => constellation.value?.nameEn)
 
-// Generate a constellation-like star pattern (unique per constellationId)
-const constellationStars = computed(() => {
-  const seed = props.gem?.constellationId
-    ? parseInt(props.gem.constellationId.replace('c', ''), 10)
-    : 1
-  return Array.from({ length: 7 }, (_, i) => ({
-    x: 50 + ((seed * (i + 3)) % 180),
-    y: 50 + ((seed * (i + 7) * 3) % 180),
-    main: i === 0 || i === 3,
-  }))
-})
-
-const constellationLines = computed(() => {
-  const s = constellationStars.value
-  return [
-    { x1: s[0].x, y1: s[0].y, x2: s[1].x, y2: s[1].y },
-    { x1: s[1].x, y1: s[1].y, x2: s[2].x, y2: s[2].y },
-    { x1: s[2].x, y1: s[2].y, x2: s[3].x, y2: s[3].y },
-    { x1: s[3].x, y1: s[3].y, x2: s[4].x, y2: s[4].y },
-    { x1: s[0].x, y1: s[0].y, x2: s[5].x, y2: s[5].y },
-    { x1: s[4].x, y1: s[4].y, x2: s[6].x, y2: s[6].y },
-  ]
-})
-
 function particleStyle(n: number) {
   const angle = (n / 14) * 360
   return {
@@ -237,9 +206,40 @@ function bgStarStyle(n: number) {
 }
 
 .ceremony-gem {
+  position: relative;
   opacity: 0;
   transform: scale(0.3);
   transition: opacity 0.6s ease, transform 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+/* The ceremony canvas is small, so it cannot carry the studio backdrop
+   the viewer uses without showing as a lit square. A CSS pool of light
+   behind it gives the stone something to sit in instead. */
+.ceremony-gem::before {
+  content: '';
+  position: absolute;
+  inset: -18%;
+  border-radius: 50%;
+  background: radial-gradient(
+    circle,
+    rgba(255, 255, 255, 0.22) 0%,
+    rgba(190, 175, 255, 0.14) 38%,
+    transparent 68%
+  );
+  pointer-events: none;
+  animation: halo 3.4s ease-in-out infinite;
+}
+
+@keyframes halo {
+  0%,
+  100% {
+    opacity: 0.75;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.08);
+  }
 }
 
 .ceremony-gem--visible {
@@ -361,16 +361,6 @@ function bgStarStyle(n: number) {
   text-align: center;
   margin-top: -16px;
   padding: 0 32px;
-}
-
-@keyframes draw-line {
-  to { stroke-dashoffset: 0; }
-}
-
-@keyframes star-appear {
-  0%   { opacity: 0; transform: scale(0); }
-  60%  { opacity: 1; transform: scale(1.8); }
-  100% { opacity: 0.9; transform: scale(1); }
 }
 
 /* Transitions */

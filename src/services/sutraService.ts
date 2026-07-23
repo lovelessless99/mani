@@ -12,9 +12,16 @@ export function getSutraMeta(sutraId: string): SutraIndexEntry | undefined {
   return (sutraIndex as SutraIndexEntry[]).find((s) => s.id === sutraId)
 }
 
-async function loadBundledVolume(sutraId: string): Promise<SutraVolume> {
-  const module = await import(`src/data/sutras/${sutraId}.json`)
-  return module.default as SutraVolume
+async function loadBundledVolume(sutraId: string, volumeId: string): Promise<SutraVolume> {
+  // Multi-chapter texts ship one file per chapter; single ones keep the
+  // plain `<id>.json` they have always used.
+  try {
+    const perVolume = await import(`src/data/sutras/${sutraId}-${volumeId}.json`)
+    return perVolume.default as SutraVolume
+  } catch {
+    const whole = await import(`src/data/sutras/${sutraId}.json`)
+    return whole.default as SutraVolume
+  }
 }
 
 async function loadRemoteVolume(sutraId: string, volumeId: string): Promise<SutraVolume> {
@@ -36,7 +43,7 @@ export async function loadVolume(sutraId: string, volumeId: string): Promise<Sut
   if (!meta) throw new Error(`Unknown sutra: ${sutraId}`)
 
   if (meta.storageType === 'bundled') {
-    return loadBundledVolume(sutraId)
+    return loadBundledVolume(sutraId, volumeId)
   }
   return loadRemoteVolume(sutraId, volumeId)
 }

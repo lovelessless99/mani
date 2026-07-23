@@ -1,4 +1,19 @@
-export type GemGeometry = 'octahedron' | 'icosahedron' | 'dodecahedron' | 'sphere' | 'tetrahedron'
+/**
+ * Avatamsaka gems take one of the cut shapes at random — eighty volumes
+ * want eighty different stones. Every other sutra has a single form of
+ * its own, drawn from its own imagery, so a gem is recognisable as
+ * belonging to that text at a glance.
+ */
+export type GemGeometry =
+  | 'octahedron'
+  | 'icosahedron'
+  | 'dodecahedron'
+  | 'sphere'
+  | 'tetrahedron'
+  | 'lotus'
+  | 'vase'
+  | 'stupa'
+  | 'dome'
 
 export interface GemParams {
   colorHex: string
