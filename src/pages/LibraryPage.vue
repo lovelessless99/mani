@@ -2,8 +2,18 @@
   <main class="page">
     <header>
       <h1 class="page-title">經文庫</h1>
-      <p class="page-sub">選擇經典與卷數</p>
+      <p class="page-sub">直排誦讀 · 自動記住讀到哪裡</p>
     </header>
+
+    <!-- Resume where the book was last left -->
+    <button v-if="reading.last" class="resume" type="button" @click="resume">
+      <div class="resume__main">
+        <p class="resume__eyebrow">繼續上次</p>
+        <p class="resume__title">{{ reading.last.sutraTitle }} · {{ reading.last.volumeLabel }}</p>
+        <div class="resume__bar"><div class="resume__fill" :style="{ width: `${reading.last.progress * 100}%` }" /></div>
+      </div>
+      <AppIcon name="chevronRight" :size="18" class="resume__go" />
+    </button>
 
     <ul class="sutra-list">
       <li v-for="(sutra, i) in sutras" :key="sutra.id">
@@ -58,12 +68,20 @@ import { useRouter } from 'vue-router'
 import GlassCard from 'src/components/GlassCard.vue'
 import ProgressRing from 'src/components/ProgressRing.vue'
 import AppSheet from 'src/components/ui/AppSheet.vue'
+import AppIcon from 'src/components/ui/AppIcon.vue'
 import { useProgressStore } from 'src/stores/progressStore'
+import { useReadingStore } from 'src/stores/readingStore'
 import { getAllSutras, getSutraMeta, formatVolumeId } from 'src/services/sutraService'
 
 const router = useRouter()
 const progressStore = useProgressStore()
+const reading = useReadingStore()
 const sutras = getAllSutras()
+
+function resume() {
+  const m = reading.last
+  if (m) router.push(`/reader/${m.sutraId}/${m.volumeId}`)
+}
 
 const showVolumeSheet = ref(false)
 const selectedSutraId = ref('')
@@ -106,10 +124,64 @@ function goToReader(volumeId: string) {
   router.push(`/reader/${selectedSutraId.value}/${volumeId}`)
 }
 
-onMounted(() => progressStore.loadAllProgress())
+onMounted(() => {
+  progressStore.loadAllProgress()
+  reading.load()
+})
 </script>
 
 <style scoped>
+.resume {
+  width: 100%;
+  margin-top: var(--s5);
+  display: flex;
+  align-items: center;
+  gap: var(--s3);
+  padding: var(--s4);
+  border-radius: var(--r-lg);
+  text-align: left;
+  background:
+    radial-gradient(circle at 90% 0%, rgba(96, 165, 250, 0.16), transparent 55%),
+    rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(96, 165, 250, 0.3);
+  transition: transform var(--fast) var(--ease);
+}
+.resume:active {
+  transform: scale(0.99);
+}
+.resume__main {
+  flex: 1;
+  min-width: 0;
+}
+.resume__eyebrow {
+  font-size: var(--text-micro);
+  letter-spacing: 0.2em;
+  text-indent: 0.2em;
+  color: var(--sapphire);
+}
+.resume__title {
+  margin-top: 3px;
+  font-family: var(--font-serif);
+  font-size: var(--text-body);
+  letter-spacing: 0.06em;
+}
+.resume__bar {
+  margin-top: var(--s3);
+  height: 3px;
+  border-radius: var(--r-full);
+  background: rgba(255, 255, 255, 0.08);
+  overflow: hidden;
+}
+.resume__fill {
+  height: 100%;
+  border-radius: var(--r-full);
+  background: var(--sapphire);
+}
+.resume__go {
+  flex-shrink: 0;
+  color: var(--text-faint);
+}
+
 .sutra-list {
   list-style: none;
   margin-top: var(--s5);

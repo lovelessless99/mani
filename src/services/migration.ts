@@ -99,7 +99,7 @@ async function mergeStats(localStats: Record<string, Record<string, unknown>>): 
     })
   }
 
-  for (const id of ['vow', 'achievements', 'pureland', 'daily', 'heaven'] as const) {
+  for (const id of ['vow', 'achievements', 'pureland', 'daily', 'heaven', 'reading'] as const) {
     const guestDoc = localStats[id]
     if (!guestDoc || Object.keys(guestDoc).length === 0) continue
     const existingSnap = await getDoc(userDoc('stats', id))

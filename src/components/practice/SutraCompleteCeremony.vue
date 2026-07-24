@@ -195,8 +195,10 @@ const guardian = computed<Guardian | null>(() =>
 .summon {
   position: absolute;
   inset: 0;
+  /* Above the lotus canvas so the ring of stones is never hidden behind it. */
+  z-index: 2;
   pointer-events: none;
-  animation: ring-spin 24s linear infinite;
+  animation: ring-spin 9s linear infinite;
 }
 
 @keyframes ring-spin {
@@ -209,12 +211,12 @@ const guardian = computed<Guardian | null>(() =>
   position: absolute;
   top: 50%;
   left: 50%;
-  width: 12px;
-  height: 12px;
-  margin: -6px 0 0 -6px;
+  width: 15px;
+  height: 15px;
+  margin: -7.5px 0 0 -7.5px;
   border-radius: 50%;
-  background: radial-gradient(circle at 36% 32%, #fff 0%, var(--c) 62%, transparent 100%);
-  box-shadow: 0 0 14px 2px var(--c);
+  background: radial-gradient(circle at 36% 32%, #fff 0%, var(--c) 60%, transparent 100%);
+  box-shadow: 0 0 16px 3px var(--c);
   opacity: 0;
   /* Each orb holds its --a angle; only the reach changes, so they land on
      an even circle. */
@@ -224,14 +226,14 @@ const guardian = computed<Guardian | null>(() =>
 @keyframes draw-ring {
   0% {
     opacity: 0;
-    transform: rotate(var(--a)) translateX(72vmin) scale(0.5);
+    transform: rotate(var(--a)) translateX(70vmin) scale(0.5);
   }
   25% {
     opacity: 1;
   }
   100% {
     opacity: 1;
-    transform: rotate(var(--a)) translateX(30vmin) scale(1);
+    transform: rotate(var(--a)) translateX(24vmin) scale(1);
   }
 }
 
@@ -261,17 +263,19 @@ const guardian = computed<Guardian | null>(() =>
   }
 }
 
-/* The lotus occupies the upper half; the card sits below it */
+/* The lotus + ring occupy the upper half at z1; the card sits above it. */
 .rite__stage {
   position: absolute;
   top: 0;
   left: 0;
   right: 0;
   height: 52%;
+  z-index: 1;
 }
 
 .rite__card {
   position: relative;
+  z-index: 2;
   width: min(23rem, 100%);
   padding: var(--s5);
   text-align: center;

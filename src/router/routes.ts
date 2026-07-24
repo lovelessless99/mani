@@ -11,6 +11,8 @@ const routes: RouteRecordRaw[] = [
       { path: 'collection', component: () => import('pages/CollectionPage.vue') },
       { path: 'pureland', component: () => import('pages/PureLandPage.vue') },
       { path: 'achievements', component: () => import('pages/AchievementsPage.vue') },
+      { path: 'library', component: () => import('pages/LibraryPage.vue') },
+      { path: 'reader/:sutraId/:volumeId', component: () => import('pages/ReaderPage.vue') },
       { path: 'more', component: () => import('pages/MorePage.vue') },
     ],
   },
@@ -21,9 +23,3 @@ const routes: RouteRecordRaw[] = [
 ]
 
 export default routes
-
-// LibraryPage / ReaderPage are intentionally unrouted while the app is
-// narrowed to memorisation + tracking. The components still exist, so
-// restoring them is a matter of adding the two routes back:
-//   { path: 'library', component: () => import('pages/LibraryPage.vue') },
-//   { path: 'reader/:sutraId/:volumeId', component: () => import('pages/ReaderPage.vue') },

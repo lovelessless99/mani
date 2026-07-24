@@ -41,8 +41,22 @@
       <AppButton variant="glass" block class="account__out" @click="signOut">登出</AppButton>
     </GlassCard>
 
+    <!-- 讀經 -->
+    <GlassCard class="setting" clickable @click="router.push('/library')">
+      <div class="row">
+        <AppIcon name="book" :size="20" class="row__icon" />
+        <div class="row__main">
+          <h2 class="row__title">讀經 · 經文庫</h2>
+          <p class="row__desc">
+            {{ reading.last ? `上次:${reading.last.sutraTitle} · ${reading.last.volumeLabel}` : '直排誦讀,記住讀到哪裡' }}
+          </p>
+        </div>
+        <AppIcon name="chevronRight" :size="18" class="row__icon" />
+      </div>
+    </GlassCard>
+
     <!-- Achievements -->
-    <GlassCard class="setting" clickable @click="router.push('/achievements')">
+    <GlassCard class="setting setting--tight" clickable @click="router.push('/achievements')">
       <div class="row">
         <AppIcon name="sparkle" :size="20" class="row__icon" />
         <div class="row__main">
@@ -109,6 +123,7 @@ import { useAuthStore } from 'src/stores/authStore'
 import { useToast, describeError } from 'src/composables/useToast'
 import { useChime } from 'src/composables/useChime'
 import { useNotify } from 'src/composables/useNotify'
+import { useReadingStore } from 'src/stores/readingStore'
 import { useAchievementStore } from 'src/stores/achievementStore'
 import { useProgressStore } from 'src/stores/progressStore'
 import { useGemStore } from 'src/stores/gemStore'
@@ -122,6 +137,7 @@ const auth = useAuthStore()
 const toast = useToast()
 const chime = useChime()
 const notify = useNotify()
+const reading = useReadingStore()
 const achievements = useAchievementStore()
 const router = useRouter()
 const error = ref('')
@@ -141,6 +157,7 @@ onMounted(() => {
     useStreakStore().load(),
     useDedicationStore().loadDedications(),
     achievements.load(),
+    reading.load(),
   ]).catch(() => {})
 })
 

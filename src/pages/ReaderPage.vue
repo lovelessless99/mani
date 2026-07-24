@@ -30,7 +30,7 @@
       <AppSpinner :size="34" />
     </div>
 
-    <div v-else-if="volume" class="scroll">
+    <div v-else-if="volume" ref="scrollEl" class="scroll" @scroll="onScroll">
       <article class="vtext">
         <p
           v-for="(block, i) in volume.blocks"
@@ -75,7 +75,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, onBeforeUnmount, nextTick } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import AppButton from 'src/components/ui/AppButton.vue'
 import AppIcon from 'src/components/ui/AppIcon.vue'
@@ -86,6 +86,7 @@ import MilestoneOverlay from 'src/components/gems/MilestoneOverlay.vue'
 import { loadVolume } from 'src/services/sutraService'
 import { useProgressStore } from 'src/stores/progressStore'
 import { useGemStore } from 'src/stores/gemStore'
+import { useReadingStore } from 'src/stores/readingStore'
 import type { SutraVolume } from 'src/types/sutra'
 import avatamsakaMap from 'src/data/meta/avatamsaka-gem-map.json'
 
@@ -93,12 +94,14 @@ const route = useRoute()
 const router = useRouter()
 const progressStore = useProgressStore()
 const gemStore = useGemStore()
+const reading = useReadingStore()
 
 const sutraId = route.params.sutraId as string
 const volumeId = route.params.volumeId as string
 
 const volume = ref<SutraVolume | null>(null)
 const loading = ref(true)
+const scrollEl = ref<HTMLElement | null>(null)
 const saving = ref(false)
 const recitedThisSession = ref(false)
 const showCompleteDialog = ref(false)
@@ -110,21 +113,71 @@ const milestoneType = ref<'sutra_complete' | 'ten_complete' | 'hundred_complete'
 
 const volumeIdDisplay = computed(() => parseInt(volumeId, 10).toString())
 
+// Reading position, kept as a 0–1 ratio down the vertical-rl columns —
+// close enough to "which line". scrollLeft runs negative as the text flows
+// leftward, so its magnitude over the scrollable width is the progress.
+function currentProgress(): number {
+  const el = scrollEl.value
+  if (!el) return 0
+  const max = el.scrollWidth - el.clientWidth
+  return max > 0 ? Math.min(1, Math.abs(el.scrollLeft) / max) : 0
+}
+
+let saveTimer: ReturnType<typeof setTimeout> | null = null
+function onScroll() {
+  if (saveTimer) clearTimeout(saveTimer)
+  saveTimer = setTimeout(saveMark, 500)
+}
+
+function markInput(progress: number) {
+  return {
+    sutraId,
+    sutraTitle: volume.value?.titleZh ?? '',
+    volumeId,
+    volumeLabel: `第 ${parseInt(volumeId, 10) || volumeId} 卷`,
+    progress,
+  }
+}
+async function saveMark() {
+  if (!volume.value) return
+  await reading.mark(markInput(currentProgress()))
+}
+
 onMounted(async () => {
   try {
+    await reading.load()
     volume.value = await loadVolume(sutraId, volumeId)
+    await nextTick()
+    // Resume where this same volume was left, if we have a mark for it.
+    const m = reading.last
+    if (m && m.sutraId === sutraId && m.volumeId === volumeId && scrollEl.value) {
+      const el = scrollEl.value
+      const max = el.scrollWidth - el.clientWidth
+      el.scrollLeft = -(m.progress * max) // negative: leftward in vertical-rl
+    }
+    await saveMark()
   } finally {
     loading.value = false
   }
+})
+
+onBeforeUnmount(() => {
+  if (saveTimer) clearTimeout(saveTimer)
+  void saveMark()
 })
 
 async function markComplete() {
   if (saving.value) return
   saving.value = true
   try {
-    const updated = await progressStore.markVolumeComplete(sutraId, volumeId)
-    newCount.value = updated.volumes[volumeId]?.count ?? 1
+    // Same slot 功課 records under, so a reading counts as a recitation there
+    // too and nothing is double-counted.
+    const slot = `${volumeId}-recite`
+    const updated = await progressStore.markVolumeComplete(sutraId, slot)
+    newCount.value = updated.volumes[slot]?.count ?? 1
     recitedThisSession.value = true
+    // Bookmark this as the place merit was dedicated.
+    await reading.markDedicated(markInput(currentProgress()))
 
     if (newCount.value === 1) {
       // First time — earn a gem
