@@ -23,38 +23,53 @@
         <AppIcon name="chevronRight" :size="18" class="enter-land__go" />
       </button>
 
-      <section v-for="set in sets" :key="set.id" class="set">
+      <!-- Search + pick a single sutra to view -->
+      <div class="finder">
+        <AppIcon name="book" :size="16" class="finder__icon" />
+        <input v-model="search" class="finder__input" type="search" placeholder="搜尋經典…" />
+      </div>
+      <ul class="tabs">
+        <li v-for="t in filteredSets" :key="t.id">
+          <button
+            class="tab"
+            :class="{ 'tab--on': t.id === activeId }"
+            type="button"
+            @click="activeId = t.id"
+          >
+            {{ t.title }}
+            <span class="tab__n tnum">{{ t.earned }}/{{ t.total }}</span>
+          </button>
+        </li>
+      </ul>
+
+      <section v-if="activeSet" class="set">
         <div class="set__head">
-          <h2 class="set__title">{{ set.title }}</h2>
-          <span class="set__count tnum">{{ set.earned }} / {{ set.total }}</span>
+          <h2 class="set__title">{{ activeSet.title }}</h2>
+          <span class="set__count tnum">{{ activeSet.earned }} / {{ activeSet.total }}</span>
         </div>
 
-        <!-- Once the set is full its figure has awakened, and holds one
-             lotus for every 部 you have recited. -->
-        <div v-if="set.full && set.rounds > 0" class="keeper">
-          <span class="keeper__name">{{ guardianName(set.id) }} · 護持此經</span>
-          <span class="keeper__lotus">
-            <span v-for="n in Math.min(set.rounds, 8)" :key="n">🪷</span>
-            <span class="keeper__n tnum">念滿 {{ set.rounds }} 部</span>
-          </span>
+        <!-- Once the set is full its figure has awakened and keeps your 部 count. -->
+        <div v-if="activeSet.full && activeSet.rounds > 0" class="keeper">
+          <span class="keeper__name">{{ guardianName(activeSet.id) }} · 護持此經</span>
+          <span class="keeper__n tnum">已圓滿 {{ activeSet.rounds }} 部</span>
         </div>
 
         <AppButton
-          v-if="set.full"
+          v-if="activeSet.full"
           variant="glass"
           icon="sparkle"
           block
           class="summon-btn"
-          @click="summon(set.id)"
+          @click="summon(activeSet.id)"
         >
-          {{ set.rounds > 0 ? `供養 ${set.rounds} 朵蓮 · 召喚` : '以寶石召喚 · ' }}{{ guardianName(set.id) }}
+          召喚 · {{ guardianName(activeSet.id) }}
         </AppButton>
         <div class="meter">
-          <div class="meter__fill" :style="{ width: `${set.ratio * 100}%` }" />
+          <div class="meter__fill" :style="{ width: `${activeSet.ratio * 100}%` }" />
         </div>
 
         <ul class="grid">
-          <li v-for="slot in set.slots" :key="slot.key">
+          <li v-for="slot in activeSet.slots" :key="slot.key">
             <GemCard
               :gem="slot.gem"
               :constellation-id="slot.constellationId"
@@ -64,6 +79,7 @@
           </li>
         </ul>
       </section>
+      <p v-else class="finder__empty">找不到「{{ search }}」</p>
     </template>
 
     <SutraCompleteCeremony
@@ -178,6 +194,22 @@ function guardianName(sutraId: string): string {
   return GUARDIANS[sutraId]?.name ?? ''
 }
 
+// One sutra shown at a time, found by search.
+const search = ref('')
+const activeId = ref('')
+
+const filteredSets = computed(() => {
+  const q = search.value.trim()
+  if (!q) return sets.value
+  return sets.value.filter((s) => s.title.includes(q))
+})
+
+// The chosen set, falling back to the first match so the view is never empty.
+const activeSet = computed(
+  () =>
+    filteredSets.value.find((s) => s.id === activeId.value) ?? filteredSets.value[0] ?? null
+)
+
 const summoned = ref<{ id: string; title: string; round: number; colors: string[] } | null>(null)
 
 /**
@@ -201,6 +233,7 @@ function summon(sutraId: string) {
 onMounted(async () => {
   try {
     await Promise.all([gemStore.loadGems(), pureland.load(), progressStore.loadAllProgress()])
+    activeId.value = getAllSutras()[0]?.id ?? ''
   } catch (e) {
     toast.error(describeError(e))
   }
@@ -328,6 +361,77 @@ onMounted(async () => {
   color: var(--text-faint);
 }
 
+/* — Search + tabs ——————————————————————————— */
+.finder {
+  margin-top: var(--s5);
+  display: flex;
+  align-items: center;
+  gap: var(--s2);
+  padding: var(--s2) var(--s4);
+  border-radius: var(--r-full);
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--hairline);
+}
+.finder__icon {
+  color: var(--text-faint);
+  flex-shrink: 0;
+}
+.finder__input {
+  flex: 1;
+  min-width: 0;
+  background: transparent;
+  border: none;
+  color: var(--text);
+  font-size: var(--text-caption);
+  letter-spacing: 0.04em;
+}
+.finder__input:focus {
+  outline: none;
+}
+.finder__empty {
+  margin-top: var(--s5);
+  text-align: center;
+  font-size: var(--text-caption);
+  color: var(--text-faint);
+}
+
+.tabs {
+  list-style: none;
+  margin-top: var(--s3);
+  display: flex;
+  gap: var(--s2);
+  overflow-x: auto;
+  padding-bottom: var(--s2);
+  -webkit-overflow-scrolling: touch;
+}
+.tabs::-webkit-scrollbar {
+  display: none;
+}
+.tab {
+  flex-shrink: 0;
+  white-space: nowrap;
+  display: inline-flex;
+  align-items: baseline;
+  gap: var(--s2);
+  padding: var(--s2) var(--s3);
+  border-radius: var(--r-full);
+  font-size: var(--text-caption);
+  letter-spacing: 0.04em;
+  color: var(--text-dim);
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--hairline);
+  transition: background var(--fast) var(--ease), border-color var(--fast) var(--ease);
+}
+.tab--on {
+  color: var(--text);
+  background: rgba(167, 139, 250, 0.16);
+  border-color: rgba(167, 139, 250, 0.5);
+}
+.tab__n {
+  font-size: var(--text-micro);
+  color: var(--text-faint);
+}
+
 .keeper {
   margin-top: var(--s3);
   display: flex;
@@ -335,7 +439,7 @@ onMounted(async () => {
   justify-content: space-between;
   gap: var(--s3);
   flex-wrap: wrap;
-  padding: var(--s2) var(--s3);
+  padding: var(--s2) var(--s4);
   border-radius: var(--r-md);
   background: rgba(251, 191, 36, 0.08);
   border: 1px solid rgba(251, 191, 36, 0.24);
@@ -346,16 +450,9 @@ onMounted(async () => {
   letter-spacing: 0.06em;
   color: #ffe6ad;
 }
-.keeper__lotus {
-  display: inline-flex;
-  align-items: center;
-  gap: 2px;
-  font-size: 0.95rem;
-}
 .keeper__n {
-  margin-left: var(--s2);
-  font-size: var(--text-micro);
-  color: var(--text-faint);
+  font-size: var(--text-caption);
+  color: var(--amber);
 }
 
 .summon-btn {

@@ -64,19 +64,9 @@
           <h2 class="rite__name">{{ guardian.name }}</h2>
           <p class="rite__epithet">{{ guardian.epithet }}</p>
 
-          <!-- 一朵蓮花代表一部;此尊已收下你的這些蓮花 -->
-          <div v-if="round > 0" class="lotus-row">
-            <span
-              v-for="n in lotusShown"
-              :key="n"
-              class="lotus-row__flower"
-              :style="{ animationDelay: `${2.1 + n * 0.08}s` }"
-              >🪷</span
-            >
-            <span v-if="round > lotusShown" class="lotus-row__more tnum">×{{ round }}</span>
-          </div>
+          <!-- The figure itself tells you how many 部 are complete -->
           <p v-if="round > 0" class="rite__kept">
-            {{ guardian.name }}為你收下 {{ round }} 朵蓮 · 已念滿 {{ round }} 部
+            「汝已圓滿 <span class="rite__kept-n tnum">{{ round }}</span> 部,我為汝記之。」
           </p>
 
           <!-- 勉勵的話 — the figure speaks, line by line -->
@@ -141,11 +131,16 @@ const speeches = computed<string[]>(() => {
   return lines
 })
 
-// One lotus per 部, capped so a well-worn sutra doesn't overflow the card.
-const lotusShown = computed(() => Math.min(props.round, 12))
 
-// Capped so a completed 華嚴經 does not fling eighty orbs at once
-const orbs = computed(() => (props.gemColors ?? []).slice(0, 24))
+// The gems settle into a ring. Padded to a full circle by cycling the
+// colours (so a one-gem 心經 still encircles the lotus) and capped so a
+// completed 華嚴經 does not fling eighty at once.
+const orbs = computed(() => {
+  const cols = props.gemColors ?? []
+  if (!cols.length) return []
+  const count = Math.min(Math.max(cols.length, 18), 32)
+  return Array.from({ length: count }, (_, i) => cols[i % cols.length])
+})
 
 const guardian = computed<Guardian | null>(() =>
   props.sutraId
@@ -194,12 +189,20 @@ const guardian = computed<Guardian | null>(() =>
 }
 
 /* — Summoning ——————————————————————————————
-   Each orb starts out at its own angle and spirals in to the centre,
-   so they converge as a gathering rather than a straight collapse. */
+   Every gem flies in from outside and settles into an evenly-spaced ring,
+   then the whole ring turns slowly while the lotus opens at its centre —
+   the stones encircle and offer, rather than collapse and vanish. */
 .summon {
   position: absolute;
   inset: 0;
   pointer-events: none;
+  animation: ring-spin 24s linear infinite;
+}
+
+@keyframes ring-spin {
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 .orb {
@@ -213,24 +216,22 @@ const guardian = computed<Guardian | null>(() =>
   background: radial-gradient(circle at 36% 32%, #fff 0%, var(--c) 62%, transparent 100%);
   box-shadow: 0 0 14px 2px var(--c);
   opacity: 0;
-  animation: draw-in 1.5s cubic-bezier(0.5, 0, 0.2, 1) forwards;
+  /* Each orb holds its --a angle; only the reach changes, so they land on
+     an even circle. */
+  animation: draw-ring 1.6s cubic-bezier(0.4, 0, 0.15, 1) forwards;
 }
 
-@keyframes draw-in {
+@keyframes draw-ring {
   0% {
     opacity: 0;
-    transform: rotate(var(--a)) translateX(calc(var(--d) * 62vmin)) rotate(calc(var(--a) * -1)) scale(0.6);
+    transform: rotate(var(--a)) translateX(72vmin) scale(0.5);
   }
-  18% {
+  25% {
     opacity: 1;
-  }
-  88% {
-    opacity: 1;
-    transform: rotate(calc(var(--a) + 150deg)) translateX(2vmin) rotate(calc((var(--a) + 150deg) * -1)) scale(1);
   }
   100% {
-    opacity: 0;
-    transform: rotate(calc(var(--a) + 170deg)) translateX(0) scale(0.3);
+    opacity: 1;
+    transform: rotate(var(--a)) translateX(30vmin) scale(1);
   }
 }
 
@@ -244,18 +245,18 @@ const guardian = computed<Guardian | null>(() =>
   border-radius: 50%;
   background: #fff;
   opacity: 0;
-  animation: burst 0.9s ease-out 1.35s forwards;
+  animation: burst 1.1s ease-out 1.5s forwards;
 }
 
 @keyframes burst {
   0% {
-    opacity: 0.95;
+    opacity: 0.9;
     transform: scale(1);
     box-shadow: 0 0 40px 12px var(--c);
   }
   100% {
     opacity: 0;
-    transform: scale(26);
+    transform: scale(14);
     box-shadow: 0 0 0 0 transparent;
   }
 }
@@ -363,41 +364,18 @@ const guardian = computed<Guardian | null>(() =>
   color: var(--c);
 }
 
-/* — Lotuses the figure keeps (一朵一部) —————————— */
-.lotus-row {
-  margin-top: var(--s4);
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: center;
-  gap: 2px;
-}
-.lotus-row__flower {
-  font-size: 1.1rem;
-  line-height: 1;
-  opacity: 0;
-  animation: lotus-pop 0.5s var(--ease-out) both;
-}
-@keyframes lotus-pop {
-  from {
-    opacity: 0;
-    transform: scale(0.3) translateY(6px);
-  }
-  to {
-    opacity: 1;
-    transform: none;
-  }
-}
-.lotus-row__more {
-  margin-left: 4px;
-  font-size: var(--text-caption);
-  color: var(--c);
-}
 .rite__kept {
-  margin-top: var(--s2);
-  font-size: var(--text-micro);
-  letter-spacing: 0.06em;
+  margin-top: var(--s4);
+  font-family: var(--font-serif);
+  font-size: var(--text-caption);
+  letter-spacing: 0.05em;
   color: var(--c);
+  opacity: 0;
+  animation: speak-in 0.6s var(--ease-out) 2.1s both;
+}
+.rite__kept-n {
+  font-size: var(--text-body);
+  font-weight: 600;
 }
 
 .rite__vow {
