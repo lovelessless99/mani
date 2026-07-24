@@ -19,7 +19,10 @@ interface StreakDoc {
   best: number
   lastDay: string // local YYYY-MM-DD of the most recent active day
   total: number // lifetime active days
+  days?: string[] // recent active day keys, for the check-in trajectory
 }
+
+const DAYS_KEPT = 140
 
 // Local-time day key — the practitioner's own calendar day, not UTC, so a
 // late-night recitation still lands on the day it felt like.
@@ -61,6 +64,7 @@ export const useStreakStore = defineStore('streak', () => {
   const best = ref(0)
   const total = ref(0)
   const lastDay = ref('')
+  const days = ref<string[]>([])
   const loaded = ref(false)
 
   const stage = computed(() => {
@@ -91,6 +95,7 @@ export const useStreakStore = defineStore('streak', () => {
       best.value = doc.best ?? 0
       total.value = doc.total ?? 0
       lastDay.value = doc.lastDay ?? ''
+      days.value = doc.days ?? []
     }
     loaded.value = true
   }
@@ -109,15 +114,37 @@ export const useStreakStore = defineStore('streak', () => {
     total.value += 1
     if (count.value > best.value) best.value = count.value
     lastDay.value = today
+    // Log the day for the check-in trajectory, keeping only the recent tail.
+    if (!days.value.includes(today)) {
+      days.value = [...days.value, today].slice(-DAYS_KEPT)
+    }
 
     await setDocData(COL, ID, {
       count: count.value,
       best: best.value,
       total: total.value,
       lastDay: lastDay.value,
+      days: days.value,
     })
     return 1
   }
 
-  return { count, best, total, lastDay, loaded, stage, nextStage, isBroken, shownCount, load, touchToday }
+  // Recent active days as a fast lookup set, for the dashboard heatmap.
+  const activeSet = computed(() => new Set(days.value))
+
+  return {
+    count,
+    best,
+    total,
+    lastDay,
+    days,
+    activeSet,
+    loaded,
+    stage,
+    nextStage,
+    isBroken,
+    shownCount,
+    load,
+    touchToday,
+  }
 })

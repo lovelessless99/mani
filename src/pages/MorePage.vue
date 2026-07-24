@@ -41,8 +41,20 @@
       <AppButton variant="glass" block class="account__out" @click="signOut">登出</AppButton>
     </GlassCard>
 
+    <!-- Dashboard -->
+    <GlassCard class="setting" clickable @click="router.push('/dashboard')">
+      <div class="row">
+        <AppIcon name="ripple" :size="20" class="row__icon" />
+        <div class="row__main">
+          <h2 class="row__title">修行軌跡</h2>
+          <p class="row__desc">打卡熱力圖 · 誦讀足跡與統計</p>
+        </div>
+        <AppIcon name="chevronRight" :size="18" class="row__icon" />
+      </div>
+    </GlassCard>
+
     <!-- 讀經 -->
-    <GlassCard class="setting" clickable @click="router.push('/library')">
+    <GlassCard class="setting setting--tight" clickable @click="router.push('/library')">
       <div class="row">
         <AppIcon name="book" :size="20" class="row__icon" />
         <div class="row__main">

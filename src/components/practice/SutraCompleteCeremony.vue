@@ -279,10 +279,12 @@ const guardian = computed<Guardian | null>(() =>
   width: min(23rem, 100%);
   padding: var(--s5);
   text-align: center;
-  background: rgba(18, 16, 26, 0.78);
+  /* Kept light so the ring of gem-light behind it still reads through. */
+  background: rgba(16, 14, 24, 0.42);
+  backdrop-filter: blur(var(--blur));
+  -webkit-backdrop-filter: blur(var(--blur));
   border-color: color-mix(in srgb, var(--c) 32%, transparent);
   box-shadow:
-    var(--shadow-3),
     inset 0 1px 0 rgba(255, 255, 255, 0.08),
     0 0 44px -18px var(--c);
   animation: rise 0.7s var(--ease-out) 1.9s both;

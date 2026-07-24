@@ -226,12 +226,18 @@ function onCeremonyDismiss() {
 </script>
 
 <style scoped>
+/* Printed-sutra look, after the 印經坊 reference: cream paper, dark ink,
+   楷書 (LXGW WenKai) set vertically right-to-left. */
 .reader {
+  --paper: #f5f3da;
+  --ink: #14110c;
+  --cinnabar: #7a2a1e;
   height: 100vh;
   height: 100dvh;
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  background: var(--paper);
 }
 
 /* — Top bar ———————————————————————————————— */
@@ -241,19 +247,22 @@ function onCeremonyDismiss() {
   align-items: center;
   gap: var(--s2);
   padding: calc(var(--safe-t) + var(--s2)) var(--s3) var(--s2);
-  background: rgba(10, 10, 15, 0.5);
-  backdrop-filter: blur(var(--blur)) saturate(180%);
-  -webkit-backdrop-filter: blur(var(--blur)) saturate(180%);
-  border-bottom: 1px solid var(--hairline);
+  color: var(--ink);
+  background: rgba(245, 243, 218, 0.9);
+  backdrop-filter: blur(var(--blur)) saturate(160%);
+  -webkit-backdrop-filter: blur(var(--blur)) saturate(160%);
+  border-bottom: 1px solid rgba(20, 17, 12, 0.12);
 }
 
 .bar__title {
   flex: 1;
   min-width: 0;
+  font-family: 'LXGW WenKai TC', var(--font-serif);
   font-size: var(--text-body);
-  font-weight: 300;
-  letter-spacing: 0.1em;
+  font-weight: 400;
+  letter-spacing: 0.12em;
   text-align: center;
+  color: var(--ink);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -284,20 +293,23 @@ function onCeremonyDismiss() {
 }
 
 /* Vertical right-to-left, the traditional setting for sutra text.
-   The wrapper scrolls horizontally; columns flow leftward as you read. */
+   The wrapper scrolls horizontally; columns flow leftward as you read.
+   line-height sets the column pitch; letter-spacing the space between
+   characters down a column. */
 .vtext {
   writing-mode: vertical-rl;
-  text-orientation: mixed;
+  text-orientation: upright;
   height: 100%;
   display: flex;
   flex-direction: row-reverse;
   gap: var(--s5);
-  padding: var(--s6) var(--s5);
-  font-family: var(--font-serif);
-  font-size: 1.125rem;
+  padding: var(--s6) var(--s6);
+  font-family: 'LXGW WenKai TC', var(--font-serif);
+  font-size: 1.4rem;
   font-weight: 400;
-  line-height: 2.1;
-  letter-spacing: 0.14em;
+  line-height: 1.9;
+  letter-spacing: 0.12em;
+  color: var(--ink);
 }
 
 .vtext__block {
@@ -305,14 +317,14 @@ function onCeremonyDismiss() {
 }
 
 .vtext__block--heading {
-  font-size: 1.3rem;
-  font-weight: 600;
-  letter-spacing: 0.24em;
-  color: var(--amber);
+  font-size: 1.55rem;
+  font-weight: 700;
+  letter-spacing: 0.22em;
+  color: var(--cinnabar);
 }
 
 .vtext__block--verse {
-  color: var(--amethyst);
+  color: #3a2f1e;
 }
 
 /* — Completion sheet ——————————————————————— */

@@ -37,7 +37,12 @@
         <p class="today__line">{{ todayLine }}</p>
       </div>
 
-      <div class="seed" :class="{ 'seed--lit': streak.shownCount > 0 }">
+      <button
+        class="seed"
+        type="button"
+        :class="{ 'seed--lit': streak.shownCount > 0 }"
+        @click="router.push('/dashboard')"
+      >
         <span class="seed__glyph">{{ streak.stage.glyph }}</span>
         <span class="seed__text">
           <span class="seed__count tnum">{{ streak.shownCount }}</span>
@@ -46,7 +51,7 @@
         <span v-if="streak.nextStage" class="seed__next">
           再 {{ streak.nextStage.at - streak.shownCount }} 天 {{ streak.nextStage.name }}
         </span>
-      </div>
+      </button>
 
       <button v-if="taskPending" class="remind" type="button" @click="router.push('/practice')">
         <span class="remind__dot" />
@@ -415,6 +420,8 @@ onMounted(async () => {
 /* — 菩提種子 streak ————————————————————————— */
 .seed {
   align-self: center;
+  pointer-events: auto;
+  cursor: pointer;
   display: inline-flex;
   align-items: center;
   gap: var(--s3);
