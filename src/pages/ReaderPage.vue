@@ -1,17 +1,9 @@
 <template>
-  <main class="reader">
-    <!-- Floating chrome — stays out of the text's way -------- -->
+  <main class="reader" :style="{ '--fs': fs + 'px' }">
     <header class="bar">
-      <AppButton
-        icon="back"
-        icon-only
-        variant="ghost"
-        aria-label="返回"
-        @click="router.back()"
-      />
-
+      <AppButton icon="back" icon-only variant="ghost" aria-label="返回" @click="router.back()" />
       <h1 class="bar__title">{{ volume?.titleZh ?? '載入中' }}</h1>
-
+      <button class="bar__z" type="button" :class="{ 'bar__z--on': showZ }" @click="showZ = !showZ">注音</button>
       <AppButton
         v-if="volume"
         :icon="recitedThisSession ? 'checkCircle' : 'circle'"
@@ -22,49 +14,59 @@
         :class="{ 'bar__done': recitedThisSession }"
         @click="markComplete"
       />
-      <span v-else class="bar__spacer" />
     </header>
 
-    <!-- Sutra text ------------------------------------------- -->
-    <div v-if="loading" class="reader__loading">
-      <AppSpinner :size="34" />
+    <div v-if="loading" class="reader__loading"><AppSpinner :size="34" /></div>
+
+    <!-- 線裝書頁:書脊 · 界欄 · 書名籤 -->
+    <div v-else-if="volume" ref="scrollEl" class="stage" @scroll="onScroll">
+      <div class="page" :class="{ 'z-on': showZ }">
+        <div class="spine">
+          <span class="spine__lbl">{{ volume.titleZh }}</span>
+          <span class="spine__num tnum">{{ volumeIdDisplay }}</span>
+        </div>
+        <div class="middle">
+          <div class="cartouche">
+            <span class="cartouche__title">{{ volume.titleZh }}</span>
+          </div>
+          <div ref="frameEl" class="frame">
+            <div class="cols">
+              <div v-for="(col, ci) in columns" :key="ci" class="col">
+                <div v-for="(c, i) in col" :key="i" class="cell" :class="{ zf: false }">
+                  <template v-if="c.t === 'punc'">
+                    <span v-if="c.kind === 'rule'" class="vrule" />
+                    <span v-else-if="c.kind === 'dots'" class="vdots"><i /><i /><i /></span>
+                    <span v-else class="punc">{{ c.ch }}</span>
+                  </template>
+                  <template v-else>
+                    <span class="base">{{ c.ch }}</span>
+                    <span v-if="showZ && c.zy.syms" class="zh">
+                      <span class="syms">{{ c.zy.syms }}</span>
+                      <span v-if="c.zy.tone" class="tone" :class="c.zy.neutral ? 'neutral' : 'side'">{{ c.zy.tone }}</span>
+                    </span>
+                  </template>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
 
-    <div v-else-if="volume" ref="scrollEl" class="scroll" @scroll="onScroll">
-      <article class="vtext">
-        <p
-          v-for="(block, i) in volume.blocks"
-          :key="i"
-          :class="['vtext__block', `vtext__block--${block.type}`]"
-        >
-          {{ block.text }}
-        </p>
-      </article>
-    </div>
+    <div v-else class="reader__loading"><p class="empty">無法載入此卷</p></div>
 
-    <div v-else class="reader__loading">
-      <p class="empty">無法載入此卷</p>
-    </div>
-
-    <!-- Repeat-recitation confirmation ------------------------ -->
     <AppSheet v-model="showCompleteDialog">
       <div class="done">
         <AppIcon name="sparkle" :size="40" class="done__icon" />
         <h2 class="done__title">回向完成</h2>
         <p class="done__body">
-          第 {{ volumeIdDisplay }} 卷已記錄<br />
-          累計誦讀 <span class="tnum">{{ newCount }}</span> 遍
+          第 {{ volumeIdDisplay }} 卷已記錄<br />累計誦讀 <span class="tnum">{{ newCount }}</span> 遍
         </p>
-        <AppButton variant="glass" block @click="showCompleteDialog = false">
-          繼續
-        </AppButton>
+        <AppButton variant="glass" block @click="showCompleteDialog = false">繼續</AppButton>
       </div>
     </AppSheet>
 
-    <!-- Gem unlock ceremony (first completion) ---------------- -->
     <UnlockCeremony :gem="gemStore.pendingUnlock" @dismiss="onCeremonyDismiss" />
-
-    <!-- Milestone (圓滿一部 / 十部 / 百部) -------------------- -->
     <MilestoneOverlay
       :visible="showMilestone"
       :type="milestoneType"
@@ -87,6 +89,7 @@ import { loadVolume } from 'src/services/sutraService'
 import { useProgressStore } from 'src/stores/progressStore'
 import { useGemStore } from 'src/stores/gemStore'
 import { useReadingStore } from 'src/stores/readingStore'
+import { zhuyinOf, splitZhuyin, type Zhuyin } from 'src/composables/useZhuyin'
 import type { SutraVolume } from 'src/types/sutra'
 import avatamsakaMap from 'src/data/meta/avatamsaka-gem-map.json'
 
@@ -101,34 +104,105 @@ const volumeId = route.params.volumeId as string
 
 const volume = ref<SutraVolume | null>(null)
 const loading = ref(true)
-const scrollEl = ref<HTMLElement | null>(null)
 const saving = ref(false)
 const recitedThisSession = ref(false)
 const showCompleteDialog = ref(false)
 const newCount = ref(0)
 const showMilestone = ref(false)
-const milestoneType = ref<'sutra_complete' | 'ten_complete' | 'hundred_complete'>(
-  'sutra_complete'
-)
+const milestoneType = ref<'sutra_complete' | 'ten_complete' | 'hundred_complete'>('sutra_complete')
+
+const scrollEl = ref<HTMLElement | null>(null)
+const frameEl = ref<HTMLElement | null>(null)
+const showZ = ref(true)
+const fs = ref(30)
+const perCol = ref(18)
 
 const volumeIdDisplay = computed(() => parseInt(volumeId, 10).toString())
 
-// Reading position, kept as a 0–1 ratio down the vertical-rl columns —
-// close enough to "which line". scrollLeft runs negative as the text flows
-// leftward, so its magnitude over the scrollable width is the progress.
+// — Cell building (漢字 + 注音, 標點) ————————————————
+type RenderCell =
+  | { t: 'han'; ch: string; zy: Zhuyin }
+  | { t: 'punc'; ch: string; kind: 'rule' | 'dots' | 'mark' }
+type Cell = RenderCell | { t: 'break' }
+
+const DASH = new Set(['—', '―', '─', '－', '━'])
+const ELLIPSIS = new Set(['…', '⋯', '‥'])
+function isCJK(ch: string): boolean {
+  const c = ch.codePointAt(0) ?? 0
+  return (c >= 0x3400 && c <= 0x9fff) || (c >= 0xf900 && c <= 0xfaff) || (c >= 0x20000 && c <= 0x2fa1f)
+}
+
+function buildCells(text: string): Cell[] {
+  const cells: Cell[] = []
+  for (const ch of text) {
+    if (ch === '\n') {
+      cells.push({ t: 'break' })
+    } else if (isCJK(ch)) {
+      cells.push({ t: 'han', ch, zy: splitZhuyin(zhuyinOf(ch)) })
+    } else if (ch.trim() === '') {
+      // skip whitespace
+    } else if (DASH.has(ch)) {
+      cells.push({ t: 'punc', ch, kind: 'rule' })
+    } else if (ELLIPSIS.has(ch)) {
+      cells.push({ t: 'punc', ch, kind: 'dots' })
+    } else {
+      cells.push({ t: 'punc', ch, kind: 'mark' })
+    }
+  }
+  return cells
+}
+
+// All cells, with a break between blocks so headings start a fresh column.
+const cells = computed<Cell[]>(() => {
+  const v = volume.value
+  if (!v) return []
+  const parts = v.blocks.map((b) => b.text).join('\n')
+  return buildCells(parts)
+})
+
+// Wrap the flat cells into vertical columns of perCol; a break ends a column.
+const columns = computed<RenderCell[][]>(() => {
+  const out: RenderCell[][] = []
+  let col: RenderCell[] = []
+  for (const c of cells.value) {
+    if (c.t === 'break') {
+      if (col.length) out.push(col)
+      col = []
+      continue
+    }
+    col.push(c)
+    if (col.length >= perCol.value) {
+      out.push(col)
+      col = []
+    }
+  }
+  if (col.length) out.push(col)
+  return out
+})
+
+// How many cells fit down one column, measured from the frame height.
+function measure() {
+  const el = frameEl.value
+  if (!el) return
+  const cs = getComputedStyle(el)
+  const padY = parseFloat(cs.paddingTop) + parseFloat(cs.paddingBottom)
+  const avail = el.clientHeight - padY
+  const cellH = fs.value * 1.5
+  perCol.value = Math.max(6, Math.floor(avail / cellH))
+}
+
+// — Reading position (horizontal scroll ≈ the line) ————————
 function currentProgress(): number {
   const el = scrollEl.value
   if (!el) return 0
   const max = el.scrollWidth - el.clientWidth
   return max > 0 ? Math.min(1, Math.abs(el.scrollLeft) / max) : 0
 }
-
 let saveTimer: ReturnType<typeof setTimeout> | null = null
 function onScroll() {
   if (saveTimer) clearTimeout(saveTimer)
   saveTimer = setTimeout(saveMark, 500)
 }
-
 function markInput(progress: number) {
   return {
     sutraId,
@@ -139,8 +213,7 @@ function markInput(progress: number) {
   }
 }
 async function saveMark() {
-  if (!volume.value) return
-  await reading.mark(markInput(currentProgress()))
+  if (volume.value) await reading.mark(markInput(currentProgress()))
 }
 
 onMounted(async () => {
@@ -148,13 +221,14 @@ onMounted(async () => {
     await reading.load()
     volume.value = await loadVolume(sutraId, volumeId)
     await nextTick()
-    // Resume where this same volume was left, if we have a mark for it.
+    measure()
+    await nextTick()
     const m = reading.last
     if (m && m.sutraId === sutraId && m.volumeId === volumeId && scrollEl.value) {
       const el = scrollEl.value
-      const max = el.scrollWidth - el.clientWidth
-      el.scrollLeft = -(m.progress * max) // negative: leftward in vertical-rl
+      el.scrollLeft = -(m.progress * (el.scrollWidth - el.clientWidth))
     }
+    window.addEventListener('resize', measure)
     await saveMark()
   } finally {
     loading.value = false
@@ -162,6 +236,7 @@ onMounted(async () => {
 })
 
 onBeforeUnmount(() => {
+  window.removeEventListener('resize', measure)
   if (saveTimer) clearTimeout(saveTimer)
   void saveMark()
 })
@@ -170,47 +245,29 @@ async function markComplete() {
   if (saving.value) return
   saving.value = true
   try {
-    // Same slot 功課 records under, so a reading counts as a recitation there
-    // too and nothing is double-counted.
     const slot = `${volumeId}-recite`
     const updated = await progressStore.markVolumeComplete(sutraId, slot)
     newCount.value = updated.volumes[slot]?.count ?? 1
     recitedThisSession.value = true
-    // Bookmark this as the place merit was dedicated.
     await reading.markDedicated(markInput(currentProgress()))
 
     if (newCount.value === 1) {
-      // First time — earn a gem
       const gemInput: Parameters<typeof gemStore.earnGem>[0] = {
         source: 'sutra_volume',
         sourceRef: `${sutraId}/${volumeId}`,
       }
       if (sutraId === 'avatamsaka') {
-        const mapEntry = (
-          avatamsakaMap as Record<string, { buddhaId: string; constellationId: string }>
-        )[volumeId]
+        const mapEntry = (avatamsakaMap as Record<string, { buddhaId: string; constellationId: string }>)[volumeId]
         if (mapEntry) {
           gemInput.buddhaId = mapEntry.buddhaId
           gemInput.constellationId = mapEntry.constellationId
         }
       }
       await gemStore.earnGem(gemInput)
-      // UnlockCeremony shows via gemStore.pendingUnlock reactivity
-
       if (updated.isFullyComplete) {
-        const completedCount = Object.values(progressStore.progressMap).filter(
-          (p) => p.isFullyComplete
-        ).length
-        if (completedCount >= 100) {
-          milestoneType.value = 'hundred_complete'
-        } else if (completedCount >= 10) {
-          milestoneType.value = 'ten_complete'
-        } else {
-          milestoneType.value = 'sutra_complete'
-        }
-        setTimeout(() => {
-          showMilestone.value = true
-        }, 2000)
+        const done = Object.values(progressStore.progressMap).filter((p) => p.isFullyComplete).length
+        milestoneType.value = done >= 100 ? 'hundred_complete' : done >= 10 ? 'ten_complete' : 'sutra_complete'
+        setTimeout(() => (showMilestone.value = true), 2000)
       }
     } else {
       showCompleteDialog.value = true
@@ -226,12 +283,21 @@ function onCeremonyDismiss() {
 </script>
 
 <style scoped>
-/* Printed-sutra look, after the 印經坊 reference: cream paper, dark ink,
-   楷書 (LXGW WenKai) set vertically right-to-left. */
+/* Printed sutra, after the 印經坊 reference: cream paper, 界欄 frame,
+   cinnabar 書名籤, 書脊, and 楷書 characters set in vertical columns with
+   注音 ruby beside each. */
 .reader {
   --paper: #f5f3da;
+  --paper-edge: #efebcb;
   --ink: #14110c;
-  --cinnabar: #7a2a1e;
+  --gold: #b9973f;
+  --gold-lt: #e9ce8b;
+  --cinnabar: #4a1712;
+  --cinnabar-dk: #2c0b08;
+  --tan: #bf9f62;
+  --sutra-font: 'LXGW WenKai TC', 'BiauKai', 'DFKai-SB', serif;
+  --cell-h: calc(var(--fs) * 1.5);
+  --col-pitch: calc(var(--fs) * 1.66);
   height: 100vh;
   height: 100dvh;
   display: flex;
@@ -240,7 +306,6 @@ function onCeremonyDismiss() {
   background: var(--paper);
 }
 
-/* — Top bar ———————————————————————————————— */
 .bar {
   flex-shrink: 0;
   display: flex;
@@ -248,103 +313,266 @@ function onCeremonyDismiss() {
   gap: var(--s2);
   padding: calc(var(--safe-t) + var(--s2)) var(--s3) var(--s2);
   color: var(--ink);
-  background: rgba(245, 243, 218, 0.9);
+  background: rgba(245, 243, 218, 0.92);
   backdrop-filter: blur(var(--blur)) saturate(160%);
   -webkit-backdrop-filter: blur(var(--blur)) saturate(160%);
-  border-bottom: 1px solid rgba(20, 17, 12, 0.12);
+  border-bottom: 1px solid rgba(20, 17, 12, 0.14);
 }
-
 .bar__title {
   flex: 1;
   min-width: 0;
-  font-family: 'LXGW WenKai TC', var(--font-serif);
+  font-family: var(--sutra-font);
   font-size: var(--text-body);
-  font-weight: 400;
-  letter-spacing: 0.12em;
+  letter-spacing: 0.1em;
   text-align: center;
   color: var(--ink);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
-
-.bar__spacer {
-  width: 40px;
+.bar__z {
+  flex-shrink: 0;
+  font-size: var(--text-micro);
+  letter-spacing: 0.14em;
+  padding: 4px 8px;
+  border-radius: var(--r-full);
+  color: #6b5a34;
+  border: 1px solid rgba(185, 151, 63, 0.5);
 }
-
+.bar__z--on {
+  color: #4a1712;
+  background: rgba(185, 151, 63, 0.24);
+}
 .bar__done {
   color: var(--emerald);
 }
 
-/* — Text ——————————————————————————————————— */
 .reader__loading {
   flex: 1;
   display: flex;
   align-items: center;
   justify-content: center;
 }
+.empty {
+  color: var(--ink);
+}
 
-.scroll {
+/* — The page, scrolled horizontally (columns flow leftward) —— */
+.stage {
   flex: 1;
   overflow-x: auto;
   overflow-y: hidden;
   overscroll-behavior-x: contain;
   -webkit-overflow-scrolling: touch;
 }
+.page {
+  height: 100%;
+  display: flex;
+  flex-direction: row;
+  min-width: 100%;
+  width: max-content;
+}
 
-/* Vertical right-to-left, the traditional setting for sutra text.
-   The wrapper scrolls horizontally; columns flow leftward as you read.
-   line-height sets the column pitch; letter-spacing the space between
-   characters down a column. */
-.vtext {
+/* 書脊 */
+.spine {
+  flex: 0 0 26px;
+  align-self: stretch;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  background: linear-gradient(180deg, var(--tan) 0 60%, var(--paper) 60% 67%, var(--tan) 67% 82%, transparent 82%);
+}
+.spine__lbl {
   writing-mode: vertical-rl;
   text-orientation: upright;
+  font-family: var(--sutra-font);
+  font-size: 11px;
+  color: var(--ink);
+  letter-spacing: 0.02em;
+  padding-top: 10%;
+  white-space: nowrap;
+  line-height: 1;
+}
+.spine__num {
+  position: absolute;
+  bottom: 2%;
+  font-size: 11px;
+  color: #5c513a;
+}
+
+.middle {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  align-items: stretch;
+  padding: 3% 4% 3% 8px;
+}
+
+/* 書名籤(硃砂底、描金框、書名直排) */
+.cartouche {
+  flex: 0 0 calc(var(--fs) * 2.2);
+  align-self: center;
+  height: 82%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: var(--cinnabar);
+  border: 1.5px solid var(--gold);
+  box-shadow: inset 0 0 0 1px var(--cinnabar-dk), inset 0 0 18px rgba(0, 0, 0, 0.5);
+}
+.cartouche__title {
+  writing-mode: vertical-rl;
+  text-orientation: upright;
+  font-family: var(--sutra-font);
+  font-weight: 700;
+  font-size: calc(var(--fs) * 0.82);
+  line-height: 1.2;
+  letter-spacing: 0.04em;
+  color: var(--gold-lt);
+  white-space: nowrap;
+  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.6));
+}
+
+/* 界欄(描金框) */
+.frame {
+  flex: 1;
+  min-height: 0;
+  margin-left: 10px;
+  background: var(--paper);
+  border: 1px solid var(--gold);
+  padding: calc(var(--fs) * 0.5) calc(var(--fs) * 0.6);
+  overflow: hidden;
+}
+.cols {
   height: 100%;
   display: flex;
   flex-direction: row-reverse;
-  gap: var(--s5);
-  padding: var(--s6) var(--s6);
-  font-family: 'LXGW WenKai TC', var(--font-serif);
-  font-size: 1.4rem;
-  font-weight: 400;
-  line-height: 1.9;
-  letter-spacing: 0.12em;
+  align-items: flex-start;
+  justify-content: flex-start;
+  gap: 0;
+}
+.col {
+  display: flex;
+  flex-direction: column;
+  flex: 0 0 auto;
+  width: var(--col-pitch);
+}
+
+/* 字格:漢字 + 右側注音 */
+.cell {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: flex-start;
+  height: var(--cell-h);
+  overflow: visible;
+}
+.cell .base {
+  font-family: var(--sutra-font);
+  font-size: var(--fs);
+  line-height: 1;
   color: var(--ink);
+  width: 1em;
+  text-align: center;
+  flex: 0 0 auto;
+}
+.cell .zh {
+  position: relative;
+  flex: 0 0 auto;
+  margin-left: calc(var(--fs) * 0.2);
+  display: flex;
+  align-items: center;
+  height: 100%;
+  width: calc(var(--fs) * 0.3);
+}
+.cell .zh .syms {
+  writing-mode: vertical-rl;
+  text-orientation: upright;
+  font-family: var(--sutra-font);
+  font-size: calc(var(--fs) * 0.3);
+  line-height: 0.98;
+  letter-spacing: 0;
+  color: var(--ink);
+  display: block;
+  width: 1em;
+}
+.cell .zh .tone {
+  position: absolute;
+  font-size: calc(var(--fs) * 0.22);
+  color: var(--ink);
+  left: calc(var(--fs) * 0.27);
+  line-height: 1;
+}
+.cell .zh .tone.side {
+  top: 0;
+}
+.cell .zh .tone.neutral {
+  left: calc(var(--fs) * 0.03);
+  top: -0.34em;
 }
 
-.vtext__block {
-  max-height: 100%;
+/* 標點:破音書名號直線、刪節號三點、其餘直排標點 */
+.cell .punc {
+  font-family: var(--sutra-font);
+  font-size: var(--fs);
+  color: var(--ink);
+  writing-mode: vertical-rl;
+  text-orientation: upright;
+  width: 1em;
+  height: 1em;
+  line-height: 1;
+  flex: 0 0 auto;
 }
-
-.vtext__block--heading {
-  font-size: 1.55rem;
-  font-weight: 700;
-  letter-spacing: 0.22em;
-  color: var(--cinnabar);
+.cell .vrule {
+  position: relative;
+  font-size: var(--fs);
+  width: 1em;
+  height: var(--cell-h);
+  flex: 0 0 auto;
 }
-
-.vtext__block--verse {
-  color: #3a2f1e;
+.cell .vrule::before {
+  content: '';
+  position: absolute;
+  left: calc(0.5em - 0.03em);
+  width: 0.06em;
+  top: 0;
+  bottom: 0;
+  background: var(--ink);
+}
+.cell .vdots {
+  font-size: var(--fs);
+  width: 1em;
+  height: var(--cell-h);
+  flex: 0 0 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: space-around;
+}
+.cell .vdots i {
+  display: block;
+  width: 0.18em;
+  height: 0.18em;
+  border-radius: 50%;
+  background: var(--ink);
 }
 
 /* — Completion sheet ——————————————————————— */
 .done {
-  padding: var(--s2) 0 var(--s2);
+  padding: var(--s2) 0;
   text-align: center;
 }
-
 .done__icon {
   margin: 0 auto var(--s3);
   color: var(--amber);
   filter: drop-shadow(0 0 12px rgba(251, 191, 36, 0.5));
 }
-
 .done__title {
   font-size: var(--text-title);
   font-weight: 300;
   letter-spacing: 0.16em;
 }
-
 .done__body {
   margin: var(--s2) 0 var(--s5);
   font-size: var(--text-caption);
