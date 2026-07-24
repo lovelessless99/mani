@@ -63,7 +63,26 @@
           <p class="rite__emblem-name">{{ guardian.emblem }}</p>
           <h2 class="rite__name">{{ guardian.name }}</h2>
           <p class="rite__epithet">{{ guardian.epithet }}</p>
-          <p class="rite__vow">{{ words }}</p>
+
+          <!-- 一朵蓮花代表一部;此尊已收下你的這些蓮花 -->
+          <div v-if="round > 0" class="lotus-row">
+            <span
+              v-for="n in lotusShown"
+              :key="n"
+              class="lotus-row__flower"
+              :style="{ animationDelay: `${2.1 + n * 0.08}s` }"
+              >🪷</span
+            >
+            <span v-if="round > lotusShown" class="lotus-row__more tnum">×{{ round }}</span>
+          </div>
+          <p v-if="round > 0" class="rite__kept">
+            {{ guardian.name }}為你收下 {{ round }} 朵蓮 · 已念滿 {{ round }} 部
+          </p>
+
+          <!-- 勉勵的話 — the figure speaks, line by line -->
+          <p v-for="(line, i) in speeches" :key="i" class="rite__vow" :style="{ animationDelay: `${2.3 + i * 0.5}s` }">
+            {{ line }}
+          </p>
           <p class="rite__sutra">{{ sutraTitle }}</p>
         </div>
 
@@ -110,13 +129,20 @@ const heading = computed(() =>
   props.mode === 'summon' ? '寶石召喚' : `圓滿 第 ${props.round} 部`
 )
 
-const words = computed(() => {
+/**
+ * The figure speaks — many words of encouragement, not one line. The vow
+ * opens, then every line of praise follows, so a summoning feels like being
+ * addressed rather than shown a caption.
+ */
+const speeches = computed<string[]>(() => {
   const g = guardian.value
-  if (!g) return ''
-  if (props.mode !== 'summon' || !g.praise?.length) return g.vow
-  // Rotate on the round so a repeat summoning is not the same words
-  return g.praise[(props.round - 1) % g.praise.length]
+  if (!g) return []
+  const lines = [g.vow, ...(g.praise ?? [])].filter(Boolean) as string[]
+  return lines
 })
+
+// One lotus per 部, capped so a well-worn sutra doesn't overflow the card.
+const lotusShown = computed(() => Math.min(props.round, 12))
 
 // Capped so a completed 華嚴經 does not fling eighty orbs at once
 const orbs = computed(() => (props.gemColors ?? []).slice(0, 24))
@@ -337,13 +363,62 @@ const guardian = computed<Guardian | null>(() =>
   color: var(--c);
 }
 
-.rite__vow {
+/* — Lotuses the figure keeps (一朵一部) —————————— */
+.lotus-row {
   margin-top: var(--s4);
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+}
+.lotus-row__flower {
+  font-size: 1.1rem;
+  line-height: 1;
+  opacity: 0;
+  animation: lotus-pop 0.5s var(--ease-out) both;
+}
+@keyframes lotus-pop {
+  from {
+    opacity: 0;
+    transform: scale(0.3) translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+.lotus-row__more {
+  margin-left: 4px;
+  font-size: var(--text-caption);
+  color: var(--c);
+}
+.rite__kept {
+  margin-top: var(--s2);
+  font-size: var(--text-micro);
+  letter-spacing: 0.06em;
+  color: var(--c);
+}
+
+.rite__vow {
+  margin-top: var(--s3);
   font-family: var(--font-serif);
   font-size: var(--text-caption);
-  line-height: 2.1;
+  line-height: 2.05;
   letter-spacing: 0.05em;
   color: var(--text-dim);
+  opacity: 0;
+  animation: speak-in 0.6s var(--ease-out) both;
+}
+@keyframes speak-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
 }
 
 .rite__sutra {

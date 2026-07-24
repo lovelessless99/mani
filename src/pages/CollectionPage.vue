@@ -29,8 +29,16 @@
           <span class="set__count tnum">{{ set.earned }} / {{ set.total }}</span>
         </div>
 
-        <!-- A completed set can call its figure back. The stones lend
-             their light for it; nothing is spent. -->
+        <!-- Once the set is full its figure has awakened, and holds one
+             lotus for every 部 you have recited. -->
+        <div v-if="set.full && set.rounds > 0" class="keeper">
+          <span class="keeper__name">{{ guardianName(set.id) }} · 護持此經</span>
+          <span class="keeper__lotus">
+            <span v-for="n in Math.min(set.rounds, 8)" :key="n">🪷</span>
+            <span class="keeper__n tnum">念滿 {{ set.rounds }} 部</span>
+          </span>
+        </div>
+
         <AppButton
           v-if="set.full"
           variant="glass"
@@ -39,7 +47,7 @@
           class="summon-btn"
           @click="summon(set.id)"
         >
-          以寶石召喚 · {{ guardianName(set.id) }}
+          {{ set.rounds > 0 ? `供養 ${set.rounds} 朵蓮 · 召喚` : '以寶石召喚 · ' }}{{ guardianName(set.id) }}
         </AppButton>
         <div class="meter">
           <div class="meter__fill" :style="{ width: `${set.ratio * 100}%` }" />
@@ -83,6 +91,7 @@ import { usePureLandStore } from 'src/stores/purelandStore'
 import SutraCompleteCeremony from 'src/components/practice/SutraCompleteCeremony.vue'
 import guardiansData from 'src/data/meta/sutra-guardians.json'
 import { useGemStore } from 'src/stores/gemStore'
+import { useProgressStore } from 'src/stores/progressStore'
 import { getAllSutras } from 'src/services/sutraService'
 import chaptersData from 'src/data/meta/sutra-chapters.json'
 import { useToast, describeError } from 'src/composables/useToast'
@@ -93,9 +102,24 @@ const CHAPTERS = chaptersData as unknown as Record<string, { items: { id: string
 const GEM_CAP = 88
 
 const gemStore = useGemStore()
+const progressStore = useProgressStore()
 const pureland = usePureLandStore()
 const router = useRouter()
 const toast = useToast()
+
+// 部數 (completed rounds) of a sutra = the lowest chapter tally across it —
+// one lotus is offered to its Buddha for each full pass.
+function roundsOf(sutraId: string, items: { id: string }[]): number {
+  if (!items.length) return 0
+  const vols = progressStore.progressMap[sutraId]?.volumes ?? {}
+  let lowest = Infinity
+  for (const c of items) {
+    const recite = vols[`${c.id}-recite`]?.count ?? vols[c.id]?.count ?? 0
+    const memorize = vols[`${c.id}-memorize`]?.count ?? 0
+    lowest = Math.min(lowest, recite + memorize)
+  }
+  return lowest === Infinity ? 0 : lowest
+}
 const selectedGem = ref<GemRecord | null>(null)
 const landName = computed(() => pureland.name)
 
@@ -143,6 +167,7 @@ const sets = computed(() =>
       earned: got,
       full: items.length > 0 && got === items.length,
       ratio: items.length ? got / items.length : 0,
+      rounds: roundsOf(s.id, items), // 部數 = lotuses this sutra's Buddha holds
     }
   })
 )
@@ -168,13 +193,14 @@ function summon(sutraId: string) {
   const set = sets.value.find((x) => x.id === sutraId)
   if (!set?.full) return
   const colors = set.slots.map((x) => x.gem?.params.colorHex).filter(Boolean) as string[]
-  const round = Math.max(1, Math.floor(Math.random() * 3) + 1)
+  // The real 部數 — so the figure shows the very lotuses you have offered.
+  const round = Math.max(1, set.rounds)
   summoned.value = { id: sutraId, title: set.title, round, colors }
 }
 
 onMounted(async () => {
   try {
-    await Promise.all([gemStore.loadGems(), pureland.load()])
+    await Promise.all([gemStore.loadGems(), pureland.load(), progressStore.loadAllProgress()])
   } catch (e) {
     toast.error(describeError(e))
   }
@@ -298,6 +324,36 @@ onMounted(async () => {
 }
 
 .set__count {
+  font-size: var(--text-micro);
+  color: var(--text-faint);
+}
+
+.keeper {
+  margin-top: var(--s3);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s3);
+  flex-wrap: wrap;
+  padding: var(--s2) var(--s3);
+  border-radius: var(--r-md);
+  background: rgba(251, 191, 36, 0.08);
+  border: 1px solid rgba(251, 191, 36, 0.24);
+}
+.keeper__name {
+  font-family: var(--font-serif);
+  font-size: var(--text-caption);
+  letter-spacing: 0.06em;
+  color: #ffe6ad;
+}
+.keeper__lotus {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  font-size: 0.95rem;
+}
+.keeper__n {
+  margin-left: var(--s2);
   font-size: var(--text-micro);
   color: var(--text-faint);
 }
