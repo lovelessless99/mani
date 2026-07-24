@@ -22,7 +22,12 @@
             {{ store.heaven.realm }} · 第 {{ store.tier }} / {{ topIndex }} 天
             <AppIcon name="chevronRight" :size="12" class="pl__realm-ico" />
           </button>
+          <p v-if="store.heaven.buddha" class="pl__buddha">✦ {{ store.heaven.buddha }} 安住此土 ✦</p>
           <p class="pl__blurb">{{ store.heaven.blurb }}</p>
+          <p class="pl__cause">{{ store.heaven.cause }}</p>
+          <p v-if="invited.length" class="pl__invited">
+            諸尊護持 · {{ invited.join(' · ') }}
+          </p>
         </template>
         <template v-else>
           <h1 class="pl__heaven">因陀羅網</h1>
@@ -87,7 +92,7 @@
           >
             昇天 · 上生{{ nextHeavenName }}
           </AppButton>
-          <div v-else class="pl__ascend-hint">
+          <div v-else-if="store.tier < topIndex" class="pl__ascend-hint">
             <p class="tnum">
               誦滿 {{ store.nextNeed }} 卷華嚴,可上生{{ nextHeavenName }}
               <span class="t-faint">· 已誦 {{ store.huayanVols }} 卷</span>
@@ -96,6 +101,7 @@
               <div class="pl__ascend-fill" :style="{ width: `${store.ascendRatio * 100}%` }" />
             </div>
           </div>
+          <p v-else class="pl__consummate">✦ 已臻華藏,萬德圓具 ✦</p>
 
           <div class="pl__extra">
             <button class="pl__lamp-btn" type="button" @click="lampOpen = true">
@@ -129,10 +135,13 @@
           >
             <span class="hrow__idx tnum">{{ i }}</span>
             <span class="hrow__main">
-              <span class="hrow__name">{{ h.name }}</span>
-              <span class="hrow__realm">{{ h.realm }}</span>
+              <span class="hrow__top">
+                <span class="hrow__name">{{ h.name }}</span>
+                <span class="hrow__realm">{{ h.realm }}</span>
+                <span v-if="i === store.tier" class="hrow__here">目前</span>
+              </span>
+              <span class="hrow__cause">{{ h.cause }}</span>
             </span>
-            <span v-if="i === store.tier" class="hrow__here">目前</span>
           </button>
         </li>
       </ul>
@@ -242,6 +251,9 @@ import {
 } from 'src/stores/heavenStore'
 import { useChime } from 'src/composables/useChime'
 import { useToast, describeError } from 'src/composables/useToast'
+import { getAllSutras } from 'src/services/sutraService'
+import chaptersData from 'src/data/meta/sutra-chapters.json'
+import guardiansData from 'src/data/meta/sutra-guardians.json'
 
 const HeavenScene = defineAsyncComponent(() => import('src/components/pureland/HeavenScene.vue'))
 const IndraNet = defineAsyncComponent(() => import('src/components/pureland/IndraNet.vue'))
@@ -302,6 +314,23 @@ const structureList = (Object.keys(STRUCTURES) as StructureType[]).map((type) =>
 }))
 
 const gemColors = computed(() => gemStore.gemsList.map((g) => g.params.colorHex))
+
+// (A) 融合:the guardian of any sutra whose gem set is complete comes to
+// dwell in the pure land you are building — collection → summon → residence.
+const CHAPTERS = chaptersData as unknown as Record<string, { items: { id: string }[] }>
+const GUARDIANS = guardiansData as unknown as Record<string, { name?: string }>
+const invited = computed<string[]>(() => {
+  const have = new Set(gemStore.gemsList.map((g) => g.sourceRef))
+  const names: string[] = []
+  for (const s of getAllSutras()) {
+    const items = CHAPTERS[s.id]?.items ?? []
+    if (items.length && items.every((c) => have.has(`${s.id}/${c.id}`))) {
+      const name = GUARDIANS[s.id]?.name
+      if (name) names.push(name)
+    }
+  }
+  return names
+})
 const powerRatio = computed(() =>
   store.totalPower ? store.freePower / store.totalPower : 0
 )
@@ -438,11 +467,41 @@ onMounted(async () => {
 }
 
 .pl__blurb {
-  margin-top: var(--s2);
+  margin: var(--s3) auto 0;
+  max-width: 22rem;
+  font-size: var(--text-body);
+  line-height: 1.85;
+  letter-spacing: 0.02em;
+  color: var(--text);
+  text-shadow: 0 1px 12px rgba(0, 0, 0, 0.95);
+}
+.pl__cause {
+  margin: var(--s3) auto 0;
+  max-width: 22rem;
+  padding: var(--s2) var(--s4);
+  border-radius: var(--r-md);
   font-size: var(--text-caption);
-  line-height: 1.7;
-  color: var(--text-dim);
-  text-shadow: 0 1px 12px rgba(0, 0, 0, 0.9);
+  line-height: 1.8;
+  letter-spacing: 0.03em;
+  color: #ffe6ad;
+  background: rgba(251, 191, 36, 0.12);
+  border: 1px solid rgba(251, 191, 36, 0.3);
+  text-shadow: 0 1px 8px rgba(0, 0, 0, 0.85);
+}
+.pl__buddha {
+  margin-top: var(--s2);
+  font-family: var(--font-serif);
+  font-size: var(--text-body);
+  letter-spacing: 0.1em;
+  color: #ffe6ad;
+  text-shadow: 0 1px 14px rgba(0, 0, 0, 0.95);
+}
+.pl__invited {
+  margin-top: var(--s2);
+  font-size: var(--text-micro);
+  letter-spacing: 0.06em;
+  color: #cbb8f0;
+  text-shadow: 0 1px 10px rgba(0, 0, 0, 0.9);
 }
 
 /* — Tier arrows ————————————————————————————— */
@@ -597,6 +656,16 @@ onMounted(async () => {
   margin-top: var(--s3);
 }
 
+.pl__consummate {
+  margin-top: var(--s3);
+  text-align: center;
+  font-size: var(--text-caption);
+  letter-spacing: 0.16em;
+  text-indent: 0.16em;
+  color: #ffe6ad;
+  text-shadow: 0 1px 10px rgba(0, 0, 0, 0.9);
+}
+
 .pl__ascend-hint {
   margin-top: var(--s3);
   text-align: center;
@@ -699,6 +768,11 @@ onMounted(async () => {
   flex: 1;
   min-width: 0;
   display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.hrow__top {
+  display: flex;
   align-items: baseline;
   gap: var(--s3);
 }
@@ -712,10 +786,14 @@ onMounted(async () => {
   color: var(--text-faint);
 }
 .hrow__here {
-  flex-shrink: 0;
   font-size: var(--text-micro);
   letter-spacing: 0.08em;
   color: var(--amber);
+}
+.hrow__cause {
+  font-size: var(--text-micro);
+  line-height: 1.5;
+  color: var(--text-faint);
 }
 .hlist__hint {
   margin-top: var(--s4);

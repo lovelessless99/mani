@@ -21,6 +21,7 @@ function dayKey(d = new Date()): string {
 export const useDailyStore = defineStore('daily', () => {
   const day = ref('')
   const done = ref<string[]>([])
+  const drawn = ref(false) // whether today's cards have been drawn from the deck
   const loaded = ref(false)
 
   function rolloverIfStale(): void {
@@ -28,14 +29,20 @@ export const useDailyStore = defineStore('daily', () => {
     if (day.value !== today) {
       day.value = today
       done.value = []
+      drawn.value = false
     }
   }
 
+  async function persist(): Promise<void> {
+    await setDocData(COL, ID, { day: day.value, done: done.value, drawn: drawn.value })
+  }
+
   async function load(): Promise<void> {
-    const doc = await getDocData<{ day: string; done: string[] }>(COL, ID)
+    const doc = await getDocData<{ day: string; done: string[]; drawn?: boolean }>(COL, ID)
     if (doc) {
       day.value = doc.day ?? ''
       done.value = doc.done ?? []
+      drawn.value = doc.drawn ?? false
     }
     rolloverIfStale()
     loaded.value = true
@@ -46,14 +53,23 @@ export const useDailyStore = defineStore('daily', () => {
     return done.value.includes(slot)
   }
 
+  /** Turn today's deck face-up. Once drawn it stays drawn for the day. */
+  async function markDrawn(): Promise<void> {
+    if (!loaded.value) await load()
+    rolloverIfStale()
+    if (drawn.value) return
+    drawn.value = true
+    await persist()
+  }
+
   /** Record `sutraId/chapterId` as practised today. */
   async function markDone(slot: string): Promise<void> {
     if (!loaded.value) await load()
     rolloverIfStale()
     if (done.value.includes(slot)) return
     done.value.push(slot)
-    await setDocData(COL, ID, { day: day.value, done: done.value })
+    await persist()
   }
 
-  return { day, done, loaded, load, isDone, markDone }
+  return { day, done, drawn, loaded, load, isDone, markDrawn, markDone }
 })

@@ -9,31 +9,59 @@
       <AppSpinner :size="34" />
     </div>
 
-    <!-- 今日功課籤 — the day's drawn reading, sized by rank -->
+    <!-- 今日功課籤 — a deck of task cards, drawn once a day and sized by rank -->
     <section
       v-if="!progressStore.loading && dailyItems.length"
-      class="draw"
-      :class="{ 'draw--done': allDailyDone }"
+      class="deck"
+      :class="{ 'deck--done': allDailyDone }"
     >
-      <div class="draw__head">
-        <div class="draw__ribbon">今日功課</div>
-        <span class="draw__rank">{{ rankInfo.rank.value.name }}</span>
+      <div class="deck__head">
+        <div class="deck__ribbon">今日功課</div>
+        <span v-if="daily.lightened.value" class="deck__ease">量力而修 · 今日從簡</span>
+        <span class="deck__rank">{{ rankInfo.rank.value.name }}</span>
       </div>
-      <ul class="draw__list">
-        <li v-for="it in dailyItems" :key="it.slot">
-          <button class="ditem" type="button" @click="goDailyItem(it)">
-            <span class="ditem__check" :class="{ 'ditem__check--on': dailyStore.isDone(it.slot) }">
-              <AppIcon v-if="dailyStore.isDone(it.slot)" name="check" :size="13" />
-            </span>
-            <span class="ditem__main">
-              <span class="ditem__sutra">{{ it.sutraTitle }}</span>
-              <span class="ditem__chapter">{{ it.chapterName }}</span>
-            </span>
-            <span class="ditem__go">›</span>
-          </button>
+
+      <!-- Face-down: draw the day's cards from the deck -->
+      <button v-if="!dailyStore.drawn" class="deck__draw" type="button" @click="drawDeck">
+        <span class="deck__stack">
+          <span v-for="n in 3" :key="n" class="deck__back" :style="{ transform: `translate(${(n - 2) * 6}px, ${(n - 2) * 5}px) rotate(${(n - 2) * 3}deg)` }">
+            <span class="deck__back-mark">卍</span>
+          </span>
+        </span>
+        <span class="deck__draw-main">
+          <span class="deck__draw-t">抽今日功課籤</span>
+          <span class="deck__draw-s">翻開 {{ dailyItems.length }} 張任務卡</span>
+        </span>
+      </button>
+
+      <!-- Revealed cards -->
+      <ul v-else class="deck__cards">
+        <li
+          v-for="(it, i) in dailyItems"
+          :key="it.slot"
+          class="tcard"
+          :class="{ 'tcard--done': dailyStore.isDone(it.slot), 'tcard--reveal': justDrew }"
+          :style="{ animationDelay: `${i * 110}ms` }"
+        >
+          <span class="tcard__sutra">{{ it.sutraTitle }}</span>
+          <span class="tcard__chapter">{{ it.chapterName }}</span>
+          <span v-if="it.gist" class="tcard__gist">{{ it.gist }}</span>
+          <div class="tcard__foot">
+            <button
+              v-if="!dailyStore.isDone(it.slot)"
+              class="tcard__do"
+              type="button"
+              :disabled="busy !== null"
+              @click="completeDaily(it)"
+            >
+              <AppIcon name="check" :size="14" /> 念畢 ＋1
+            </button>
+            <span v-else class="tcard__done"><AppIcon name="check" :size="14" /> 今日已修</span>
+          </div>
+          <button class="tcard__open" type="button" @click="goDailyItem(it)">全文 ›</button>
         </li>
       </ul>
-      <p v-if="allDailyDone" class="draw__all-done">✦ 今日功課圓滿 ✦</p>
+      <p v-if="allDailyDone" class="deck__all-done">✦ 今日功課圓滿 ✦</p>
     </section>
 
     <GlassCard v-if="!progressStore.loading && drillable.length" clickable class="memo" @click="pickerOpen = true">
@@ -239,9 +267,41 @@ const allDailyDone = computed(
   () => dailyItems.value.length > 0 && dailyItems.value.every((it) => dailyStore.isDone(it.slot))
 )
 
-// Open the drawn chapter's sutra sheet so it can be recited straight away.
+// Only animate the deal when the deck is turned over in this session, not
+// every time the page loads on an already-drawn day.
+const justDrew = ref(false)
+async function drawDeck() {
+  justDrew.value = true
+  await dailyStore.markDrawn()
+}
+
+// Open the drawn chapter's sutra sheet so it can be read in full.
 function goDailyItem(it: DailyItem) {
   open(it.sutraId)
+}
+
+/**
+ * Finish a task card: record one recitation for exactly its chapter, so the
+ * card completes and the count tallies in one tap — the same crediting path
+ * as the counter, streak, gem, and daily-done marking.
+ */
+async function completeDaily(it: DailyItem) {
+  if (busy.value || dailyStore.isDone(it.slot)) return
+  busy.value = it.slot
+  const roundsBefore = sutras.value.find((x) => x.id === it.sutraId)?.rounds ?? 0
+  try {
+    await progressStore.markVolumeComplete(it.sutraId, slotKey(it.chapterId, 'recite'))
+    chime.strike(0.5)
+    await earnGemIfFirst(it.sutraId, it.chapterId, true)
+    await streakStore.touchToday()
+    await dailyStore.markDone(it.slot)
+    checkMedals(1800)
+    celebrateIfRoundDone(it.sutraId, roundsBefore, 1400)
+  } catch (e) {
+    toast.error(describeError(e))
+  } finally {
+    busy.value = null
+  }
 }
 
 /**
@@ -620,8 +680,8 @@ onMounted(async () => {
   letter-spacing: 0.06em;
 }
 
-/* — 今日功課籤 ————————————————————————————————— */
-.draw {
+/* — 今日功課籤 · 牌組 ————————————————————————————— */
+.deck {
   margin-top: var(--s5);
   padding: var(--s3) var(--s4) var(--s4);
   border-radius: var(--r-lg);
@@ -631,20 +691,18 @@ onMounted(async () => {
   border: 1px solid rgba(251, 191, 36, 0.26);
   transition: border-color var(--base) var(--ease), background var(--base) var(--ease);
 }
-
-.draw--done {
+.deck--done {
   border-color: rgba(134, 239, 172, 0.32);
   background: rgba(134, 239, 172, 0.06);
 }
 
-.draw__head {
+.deck__head {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: var(--s3);
 }
-
-.draw__ribbon {
+.deck__ribbon {
   padding: 4px var(--s3);
   border-radius: var(--r-full);
   font-size: var(--text-micro);
@@ -654,86 +712,183 @@ onMounted(async () => {
   background: rgba(251, 191, 36, 0.12);
   border: 1px solid rgba(251, 191, 36, 0.3);
 }
-.draw--done .draw__ribbon {
+.deck--done .deck__ribbon {
   color: #86efac;
   background: rgba(134, 239, 172, 0.12);
   border-color: rgba(134, 239, 172, 0.3);
 }
-
-.draw__rank {
+.deck__rank {
   font-size: var(--text-micro);
   letter-spacing: 0.12em;
   color: var(--text-faint);
 }
-
-.draw__list {
-  list-style: none;
-  margin-top: var(--s3);
-  display: grid;
-  gap: var(--s2);
+.deck__ease {
+  margin-left: auto;
+  margin-right: var(--s2);
+  font-size: var(--text-micro);
+  letter-spacing: 0.06em;
+  color: #86efac;
 }
 
-.ditem {
+/* Face-down deck */
+.deck__draw {
+  margin-top: var(--s3);
   width: 100%;
   display: flex;
   align-items: center;
-  gap: var(--s3);
-  padding: var(--s2) var(--s3);
+  gap: var(--s5);
+  padding: var(--s4);
   border-radius: var(--r-md);
-  text-align: left;
   background: rgba(255, 255, 255, 0.03);
-  border: 1px solid var(--hairline);
-  transition: background var(--fast) var(--ease);
+  border: 1px dashed rgba(251, 191, 36, 0.4);
+  transition: background var(--fast) var(--ease), transform var(--fast) var(--ease);
 }
-.ditem:hover {
-  background: rgba(255, 255, 255, 0.08);
+.deck__draw:hover {
+  background: rgba(251, 191, 36, 0.08);
 }
-.ditem:active {
+.deck__draw:active {
   transform: scale(0.99);
 }
-
-.ditem__check {
+.deck__stack {
+  position: relative;
   flex-shrink: 0;
-  width: 20px;
-  height: 20px;
+  width: 52px;
+  height: 68px;
+}
+.deck__back {
+  position: absolute;
+  inset: 0;
   display: grid;
   place-items: center;
-  border-radius: 50%;
-  border: 1px solid var(--hairline-strong);
-  color: #071108;
+  border-radius: 6px;
+  background: linear-gradient(150deg, #3a2f5e, #241d3e);
+  border: 1px solid rgba(251, 191, 36, 0.4);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
 }
-.ditem__check--on {
-  background: #86efac;
-  border-color: #86efac;
+.deck__back-mark {
+  color: rgba(251, 191, 36, 0.7);
+  font-size: 1.2rem;
 }
-
-.ditem__main {
-  flex: 1;
-  min-width: 0;
+.deck__draw-main {
   display: flex;
   flex-direction: column;
+  text-align: left;
+}
+.deck__draw-t {
+  font-size: var(--text-body);
+  letter-spacing: 0.08em;
+  color: var(--amber);
+}
+.deck__draw-s {
+  margin-top: 2px;
+  font-size: var(--text-micro);
+  color: var(--text-faint);
 }
 
-.ditem__sutra {
+/* Revealed cards — a swipeable row */
+.deck__cards {
+  list-style: none;
+  margin-top: var(--s3);
+  display: flex;
+  gap: var(--s3);
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  padding-bottom: var(--s2);
+  -webkit-overflow-scrolling: touch;
+}
+.deck__cards::-webkit-scrollbar {
+  display: none;
+}
+
+.tcard {
+  scroll-snap-align: start;
+  flex: 0 0 66%;
+  max-width: 15rem;
+  display: flex;
+  flex-direction: column;
+  min-height: 9.5rem;
+  padding: var(--s3) var(--s4);
+  border-radius: var(--r-md);
+  background: linear-gradient(160deg, rgba(255, 255, 255, 0.07), rgba(255, 255, 255, 0.02));
+  border: 1px solid var(--hairline-strong);
+}
+.tcard--done {
+  background: rgba(134, 239, 172, 0.06);
+  border-color: rgba(134, 239, 172, 0.32);
+}
+.tcard--reveal {
+  animation: card-deal 0.5s var(--ease-out) both;
+}
+@keyframes card-deal {
+  from {
+    opacity: 0;
+    transform: translateY(-36px) rotateX(35deg) scale(0.86);
+  }
+}
+
+.tcard__sutra {
   font-size: var(--text-micro);
   letter-spacing: 0.1em;
   color: var(--text-faint);
 }
-
-.ditem__chapter {
-  margin-top: 1px;
+.tcard__chapter {
+  margin-top: 3px;
   font-family: var(--font-serif);
-  font-size: var(--text-body);
+  font-size: 1.25rem;
   letter-spacing: 0.06em;
 }
-
-.ditem__go {
-  flex-shrink: 0;
+.tcard__gist {
+  margin-top: var(--s2);
+  font-size: var(--text-micro);
+  line-height: 1.6;
+  color: var(--text-dim);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.tcard__foot {
+  margin-top: auto;
+  padding-top: var(--s3);
+}
+.tcard__do {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: var(--s2) var(--s4);
+  border-radius: var(--r-full);
+  font-size: var(--text-caption);
+  letter-spacing: 0.06em;
+  color: var(--amber);
+  background: rgba(251, 191, 36, 0.14);
+  border: 1px solid rgba(251, 191, 36, 0.4);
+  transition: background var(--fast) var(--ease);
+}
+.tcard__do:hover {
+  background: rgba(251, 191, 36, 0.24);
+}
+.tcard__do:disabled {
+  opacity: 0.5;
+}
+.tcard__done {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: var(--text-caption);
+  letter-spacing: 0.06em;
+  color: #86efac;
+}
+.tcard__open {
+  margin-top: var(--s2);
+  align-self: flex-start;
+  font-size: var(--text-micro);
   color: var(--text-faint);
-  font-size: 1.1rem;
+}
+.tcard__open:hover {
+  color: var(--text-dim);
 }
 
-.draw__all-done {
+.deck__all-done {
   margin-top: var(--s3);
   text-align: center;
   font-size: var(--text-caption);

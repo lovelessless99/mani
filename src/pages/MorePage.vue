@@ -69,6 +69,21 @@
       </div>
     </GlassCard>
 
+    <GlassCard v-if="notify.supported" class="setting setting--tight" clickable @click="onToggleNotify">
+      <div class="row">
+        <AppIcon name="sparkle" :size="20" class="row__icon" />
+        <div class="row__main">
+          <h2 class="row__title">每日功課提醒</h2>
+          <p class="row__desc">
+            {{ notify.canScheduleWhenClosed ? '每晚提醒未圓滿的功課' : '開啟後,下次進來時提醒(此瀏覽器不支援排程通知)' }}
+          </p>
+        </div>
+        <span class="switch" :class="{ 'switch--on': notify.enabled.value }">
+          <span class="switch__dot" />
+        </span>
+      </div>
+    </GlassCard>
+
     <ul class="soon">
       <li v-for="item in planned" :key="item.title">
         <GlassCard>
@@ -93,6 +108,7 @@ import AppButton from 'src/components/ui/AppButton.vue'
 import { useAuthStore } from 'src/stores/authStore'
 import { useToast, describeError } from 'src/composables/useToast'
 import { useChime } from 'src/composables/useChime'
+import { useNotify } from 'src/composables/useNotify'
 import { useAchievementStore } from 'src/stores/achievementStore'
 import { useProgressStore } from 'src/stores/progressStore'
 import { useGemStore } from 'src/stores/gemStore'
@@ -105,9 +121,17 @@ import { onMounted, ref } from 'vue'
 const auth = useAuthStore()
 const toast = useToast()
 const chime = useChime()
+const notify = useNotify()
 const achievements = useAchievementStore()
 const router = useRouter()
 const error = ref('')
+
+async function onToggleNotify() {
+  await notify.toggle()
+  if (notify.enabled.value && notify.permission.value !== 'granted') {
+    toast.info('瀏覽器未允許通知,請於網站設定開啟')
+  }
+}
 
 // The medal count on the card needs every metric loaded.
 onMounted(() => {

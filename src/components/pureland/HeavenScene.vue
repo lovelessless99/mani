@@ -1,17 +1,22 @@
 <template>
   <TresCanvas :alpha="true" :antialias="true">
-    <TresPerspectiveCamera :position="[0, 3.6, 9]" :fov="42" :look-at="[0, 0.6, 0]" />
+    <!-- Low and far back so the land runs out to a horizon rather than
+         sitting in a bowl right in front of the viewer. -->
+    <TresPerspectiveCamera :position="[0, 3, 14]" :fov="50" :look-at="[0, 0.6, 0]" />
     <OrbitControls
       :enable-zoom="true"
       :enable-pan="false"
-      :min-distance="5"
-      :max-distance="15"
-      :min-polar-angle="0.35"
-      :max-polar-angle="1.45"
+      :min-distance="6"
+      :max-distance="34"
+      :min-polar-angle="0.2"
+      :max-polar-angle="1.52"
       :target="[0, 0.6, 0]"
       :auto-rotate="true"
-      :auto-rotate-speed="0.3"
+      :auto-rotate-speed="0.25"
     />
+
+    <!-- Distance fades into the sky, so the ground reads as endless. -->
+    <SceneFog :color="fogColor" />
 
     <TresAmbientLight :intensity="formless ? 0.9 : 0.55" :color="ambientColor" />
     <TresDirectionalLight :position="[5, 9, 4]" :intensity="1.7" :color="keyColor" />
@@ -40,34 +45,35 @@
         </TresMesh>
       </TresGroup>
 
-      <!-- Ground. 欲界 is paved with gold, 色界 floored with 琉璃 (a
-           translucent lapis glass); the formless realms have no ground at
-           all — only a faint ring of light where land would be. -->
+      <!-- Ground. A vast plain running out to the fogged horizon, paved with
+           gold in 欲界 and with luminous 琉璃 in 色界; the formless realms
+           have no ground at all. A ring of light marks the built centre. -->
       <template v-if="!formless">
         <!-- 黃金為地 -->
-        <TresMesh v-if="realm === '欲界'" :position="[0, -0.15, 0]">
-          <TresCylinderGeometry :args="[5, 5.2, 0.3, 40]" />
-          <TresMeshStandardMaterial color="#caa24a" :metalness="0.9" :roughness="0.32" :emissive="'#4a3410'" :emissive-intensity="0.12" />
+        <TresMesh v-if="realm === '欲界'" :position="[0, -0.15, 0]" :rotation="[-Math.PI / 2, 0, 0]">
+          <TresCircleGeometry :args="[60, 72]" />
+          <TresMeshStandardMaterial color="#caa24a" :metalness="0.88" :roughness="0.36" :emissive="'#4a3410'" :emissive-intensity="0.1" />
+        </TresMesh>
+        <!-- 佛土 · 七寶莊嚴,radiant -->
+        <TresMesh v-else-if="realm === '佛土'" :position="[0, -0.15, 0]" :rotation="[-Math.PI / 2, 0, 0]">
+          <TresCircleGeometry :args="[60, 72]" />
+          <TresMeshStandardMaterial :color="groundColor" :metalness="0.75" :roughness="0.16" :emissive="groundColor" :emissive-intensity="0.35" />
         </TresMesh>
         <!-- 琉璃為地 -->
-        <TresMesh v-else :position="[0, -0.15, 0]">
-          <TresCylinderGeometry :args="[5, 5.2, 0.3, 40]" />
-          <TresMeshPhysicalMaterial
+        <TresMesh v-else :position="[0, -0.15, 0]" :rotation="[-Math.PI / 2, 0, 0]">
+          <TresCircleGeometry :args="[60, 72]" />
+          <TresMeshStandardMaterial
             :color="groundColor"
-            :transmission="0.55"
-            :thickness="1.2"
-            :roughness="0.08"
-            :ior="1.5"
-            :metalness="0.1"
-            :transparent="true"
-            :opacity="0.95"
+            :metalness="0.5"
+            :roughness="0.14"
             :emissive="groundColor"
-            :emissive-intensity="0.2"
+            :emissive-intensity="0.22"
           />
         </TresMesh>
-        <TresMesh :position="[0, 0.02, 0]">
-          <TresCylinderGeometry :args="[5.02, 5.02, 0.04, 40]" />
-          <TresMeshStandardMaterial :color="rimColor" :emissive="rimColor" :emissive-intensity="0.5" :roughness="0.4" />
+        <!-- The sanctified centre, ringed in light -->
+        <TresMesh :position="[0, -0.02, 0]" :rotation="[-Math.PI / 2, 0, 0]">
+          <TresRingGeometry :args="[5, 5.35, 64]" />
+          <TresMeshBasicMaterial :color="rimColor" :transparent="true" :opacity="0.7" :side="2" />
         </TresMesh>
       </template>
       <template v-else>
@@ -136,6 +142,7 @@ import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { TresCanvas } from '@tresjs/core'
 import { OrbitControls } from '@tresjs/cientos'
 import MotifDecor from './MotifDecor.vue'
+import SceneFog from './SceneFog.vue'
 import type { Build, Heaven, StructureType } from 'src/stores/heavenStore'
 
 const props = defineProps<{ heaven: Heaven; build: Build; lampLevel?: number }>()
@@ -156,6 +163,9 @@ const satellites = computed<[number, number, number][]>(() => {
 const realm = computed(() => props.heaven.realm)
 const formless = computed(() => props.heaven.realm === '無色界')
 const groundColor = computed(() => props.heaven.ground)
+// The horizon haze — the brighter sky colour, so the plain melts into the
+// same atmosphere painted behind the canvas.
+const fogColor = computed(() => props.heaven.sky[0])
 const rimColor = computed(() => props.heaven.sky[0])
 const ambientColor = computed(() => props.heaven.sky[0])
 const keyColor = computed(() => (formless.value ? '#d8c8ff' : '#fff4e0'))

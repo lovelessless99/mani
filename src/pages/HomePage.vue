@@ -48,6 +48,12 @@
         </span>
       </div>
 
+      <button v-if="taskPending" class="remind" type="button" @click="router.push('/practice')">
+        <span class="remind__dot" />
+        <span class="remind__text">今日功課尚未圓滿 · 抽一張功課卡</span>
+        <span class="remind__go">›</span>
+      </button>
+
       <section class="ledger">
         <dl class="stats">
           <div class="stat">
@@ -80,8 +86,11 @@ import AppIcon from 'src/components/ui/AppIcon.vue'
 import { useProgressStore } from 'src/stores/progressStore'
 import { useGemStore } from 'src/stores/gemStore'
 import { useStreakStore } from 'src/stores/streakStore'
+import { useDailyStore } from 'src/stores/dailyStore'
 import { getAllSutras } from 'src/services/sutraService'
 import { useToast, describeError } from 'src/composables/useToast'
+import { useDailyTask } from 'src/composables/useDailyTask'
+import { useNotify } from 'src/composables/useNotify'
 import blessingsData from 'src/data/meta/blessings.json'
 import { useFastDay } from 'src/composables/useFastDay'
 
@@ -103,7 +112,17 @@ const router = useRouter()
 const progressStore = useProgressStore()
 const gemStore = useGemStore()
 const streak = useStreakStore()
+const dailyStore = useDailyStore()
+const daily = useDailyTask()
+const notify = useNotify()
 const toast = useToast()
+
+// Nudge only once there is a real, unfinished course for today.
+const taskPending = computed(
+  () =>
+    daily.items.value.length > 0 &&
+    !daily.items.value.every((it) => dailyStore.isDone(it.slot))
+)
 
 const showScene = ref(false)
 const sceneReady = ref(false)
@@ -178,7 +197,14 @@ onMounted(async () => {
   }
 
   try {
-    await Promise.all([progressStore.loadAllProgress(), gemStore.loadGems(), streak.load()])
+    await Promise.all([
+      progressStore.loadAllProgress(),
+      gemStore.loadGems(),
+      streak.load(),
+      dailyStore.load(),
+    ])
+    // Refresh the evening reminder each visit (where the browser can schedule).
+    void notify.scheduleDaily()
   } catch (e) {
     toast.error(describeError(e))
   }
@@ -341,6 +367,49 @@ onMounted(async () => {
   letter-spacing: 0.06em;
   color: var(--text-dim);
   text-shadow: 0 1px 14px rgba(0, 0, 0, 0.7);
+}
+
+/* — Daily reminder nudge ———————————————————————— */
+.remind {
+  align-self: center;
+  pointer-events: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s2);
+  padding: var(--s2) var(--s4);
+  border-radius: var(--r-full);
+  background: rgba(251, 191, 36, 0.12);
+  border: 1px solid rgba(251, 191, 36, 0.32);
+  backdrop-filter: blur(var(--blur));
+  -webkit-backdrop-filter: blur(var(--blur));
+  transition: background var(--fast) var(--ease);
+}
+.remind:hover {
+  background: rgba(251, 191, 36, 0.2);
+}
+.remind:active {
+  transform: scale(0.98);
+}
+.remind__dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--amber);
+  box-shadow: 0 0 8px var(--amber);
+  animation: remind-pulse 2s ease-in-out infinite;
+}
+@keyframes remind-pulse {
+  50% {
+    opacity: 0.4;
+  }
+}
+.remind__text {
+  font-size: var(--text-caption);
+  letter-spacing: 0.04em;
+  color: #ffe0a0;
+}
+.remind__go {
+  color: var(--amber);
 }
 
 /* — 菩提種子 streak ————————————————————————— */

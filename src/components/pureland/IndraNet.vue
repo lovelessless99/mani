@@ -10,8 +10,11 @@
       :auto-rotate-speed="0.5"
     />
 
-    <TresAmbientLight :intensity="0.8" color="#c8d4ff" />
-    <TresPointLight :position="[0, 0, 0]" :intensity="6" color="#ffffff" :distance="12" />
+    <!-- The environment every mirror-jewel reflects -->
+    <NetEnvironment :colors="colors" />
+
+    <TresAmbientLight :intensity="0.5" color="#c8d4ff" />
+    <TresPointLight :position="[0, 0, 0]" :intensity="5" color="#ffffff" :distance="12" />
 
     <TresGroup :rotation="[rot * 0.4, rot, 0]">
       <!-- The net itself: a geodesic wireframe, each edge a strand -->
@@ -20,15 +23,17 @@
         <TresMeshBasicMaterial color="#9fb4ff" :wireframe="true" :transparent="true" :opacity="0.28" />
       </TresMesh>
 
-      <!-- A jewel at every knot, each holding the light of all the others -->
+      <!-- A jewel at every knot — a polished mirror that holds the light and
+           colour of all the others reflected in it. -->
       <TresMesh v-for="(n, i) in nodes" :key="i" :position="n.pos">
-        <TresIcosahedronGeometry :args="[0.16, 0]" />
+        <TresIcosahedronGeometry :args="[0.18, 1]" />
         <TresMeshStandardMaterial
           :color="n.color"
+          :metalness="1"
+          :roughness="0.04"
+          :env-map-intensity="2"
           :emissive="n.color"
-          :emissive-intensity="1.5"
-          :metalness="0.3"
-          :roughness="0.15"
+          :emissive-intensity="0.25"
         />
       </TresMesh>
     </TresGroup>
@@ -39,6 +44,7 @@
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { TresCanvas } from '@tresjs/core'
 import { OrbitControls } from '@tresjs/cientos'
+import NetEnvironment from './NetEnvironment.vue'
 
 const props = defineProps<{ colors: string[] }>()
 

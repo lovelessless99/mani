@@ -49,20 +49,39 @@ export type Motif =
   | 'mirage'
   | 'darkpalace'
   | 'brahma'
+  | 'brahmaking'
+  | 'spark'
+  | 'beam'
   | 'radiance'
+  | 'petal'
   | 'pure'
+  | 'lake'
   | 'cloudless'
+  | 'terrace'
+  | 'frost'
   | 'suddhavasa'
-  | 'formless'
+  | 'crystal'
+  | 'summit'
+  | 'voidspace'
+  | 'voidmind'
+  | 'voidnil'
+  | 'voidapex'
+  | 'sukhavati'
+  | 'vaidurya'
+  | 'fragrance'
+  | 'lotusstore'
 
 export interface Heaven {
   id: string
   name: string
-  realm: '欲界' | '色界' | '無色界'
+  realm: '欲界' | '色界' | '無色界' | '佛土'
   motif: Motif
   sky: string[]
   ground: string
   blurb: string
+  cause: string
+  /** The Buddha who presides over a 佛土 (pure land); absent for the heavens. */
+  buddha?: string
 }
 
 export const HEAVENS = heavensData as Heaven[]
