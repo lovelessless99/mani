@@ -80,7 +80,15 @@
         <GlassCard clickable @click="open(s.id)">
           <div class="sutra">
             <div class="sutra__main">
-              <h2 class="sutra__title">{{ s.titleZh }}</h2>
+              <div class="sutra__titlerow">
+                <h2 class="sutra__title">{{ s.titleZh }}</h2>
+                <span class="mtag" :class="`mtag--t${sutraMasteryOf(s.rounds).tier}`">
+                  {{ sutraMasteryOf(s.rounds).name }}
+                  <span class="mtag__dots">
+                    <span v-for="n in 5" :key="n" class="mtag__dot" :class="{ 'mtag__dot--on': n <= sutraMasteryOf(s.rounds).tier }" />
+                  </span>
+                </span>
+              </div>
               <p class="sutra__meta tnum">
                 <template v-if="s.rounds">已圓滿 {{ s.rounds }} 部 · </template>
                 共 {{ s.total }} {{ s.unit }} · 累計 {{ s.sum }} 遍
@@ -428,6 +436,26 @@ const MASTERY = [
   { at: 6, label: '精熟', stars: 3 },
   { at: 12, label: '滾瓜爛熟', stars: 4 },
 ]
+
+/**
+ * 精通程度 — a whole sutra's proficiency, from how many 部 have been
+ * completed (each 部 folds in both reciting and memorising). Every sutra
+ * carries its own level and climbs its own ladder.
+ */
+const SUTRA_MASTERY = [
+  { at: 0, name: '初習', tier: 0 },
+  { at: 1, name: '通讀', tier: 1 },
+  { at: 3, name: '漸熟', tier: 2 },
+  { at: 7, name: '純熟', tier: 3 },
+  { at: 21, name: '精通', tier: 4 },
+  { at: 49, name: '圓通', tier: 5 },
+]
+function sutraMasteryOf(rounds: number) {
+  let m = SUTRA_MASTERY[0]
+  for (const level of SUTRA_MASTERY) if (rounds >= level.at) m = level
+  const next = SUTRA_MASTERY.find((l) => l.at > rounds) ?? null
+  return { ...m, next, toNext: next ? next.at - rounds : 0 }
+}
 function masteryOf(sutraId: string, chapterId: string) {
   const n = countFor(sutraId, chapterId, 'memorize')
   let m = MASTERY[0]
@@ -667,10 +695,49 @@ onMounted(async () => {
   min-width: 0;
 }
 
+.sutra__titlerow {
+  display: flex;
+  align-items: center;
+  gap: var(--s3);
+  flex-wrap: wrap;
+}
 .sutra__title {
   font-size: var(--text-title);
   font-weight: 300;
   letter-spacing: 0.08em;
+}
+
+/* 精通程度 tag */
+.mtag {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 2px var(--s2);
+  border-radius: var(--r-full);
+  font-size: var(--text-micro);
+  letter-spacing: 0.08em;
+  color: var(--text-faint);
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--hairline);
+}
+.mtag--t1 { color: #9cc8f0; border-color: rgba(96, 165, 250, 0.35); }
+.mtag--t2 { color: #86efac; border-color: rgba(134, 239, 172, 0.35); }
+.mtag--t3 { color: #a5f0d8; border-color: rgba(45, 212, 191, 0.4); }
+.mtag--t4 { color: #e6c07a; border-color: rgba(251, 191, 36, 0.45); background: rgba(251, 191, 36, 0.08); }
+.mtag--t5 { color: #f0abfc; border-color: rgba(232, 121, 249, 0.5); background: rgba(232, 121, 249, 0.1); }
+.mtag__dots {
+  display: inline-flex;
+  gap: 2px;
+}
+.mtag__dot {
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: currentColor;
+  opacity: 0.25;
+}
+.mtag__dot--on {
+  opacity: 1;
 }
 
 .sutra__round {
