@@ -1,5 +1,5 @@
 <template>
-  <main class="reader" :style="{ '--fs': fs + 'px', '--paper': paper, '--ink': ink }">
+  <main class="reader" :style="{ '--fs': fs + 'px', '--paper': paper, '--ink': ink, '--sutra-font': font + ', serif' }">
     <header class="bar">
       <AppButton icon="back" icon-only variant="ghost" aria-label="返回" @click="router.back()" />
       <h1 class="bar__title">{{ volume?.titleZh ?? '載入中' }}</h1>
@@ -19,9 +19,9 @@
 
     <div v-if="loading" class="reader__loading"><AppSpinner :size="34" /></div>
 
-    <!-- 線裝書頁:書脊 · 界欄 · 書名籤 -->
-    <div v-else-if="volume" ref="scrollEl" class="stage" @scroll="onScroll">
-      <div class="page" :class="{ 'z-on': showZ }">
+    <!-- 線裝書頁:書脊 · 界欄 · 書名籤 · 翻頁分頁 -->
+    <div v-else-if="volume" class="stage" @click="onTapFlip">
+      <div :key="pageIndex" class="page page--flip" :class="{ 'z-on': showZ }">
         <div class="spine">
           <span class="spine__lbl">{{ volume.titleZh }}</span>
           <span class="spine__num tnum">{{ volumeIdDisplay }}</span>
@@ -32,8 +32,8 @@
           </div>
           <div ref="frameEl" class="frame">
             <div class="cols">
-              <div v-for="(col, ci) in columns" :key="ci" class="col">
-                <div v-for="(c, i) in col" :key="i" class="cell" :class="{ zf: false }">
+              <div v-for="(col, ci) in currentPage" :key="ci" class="col">
+                <div v-for="(c, i) in col" :key="i" class="cell">
                   <template v-if="c.t === 'punc'">
                     <span v-if="c.kind === 'rule'" class="vrule" />
                     <span v-else-if="c.kind === 'dots'" class="vdots"><i /><i /><i /></span>
@@ -52,11 +52,17 @@
           </div>
         </div>
       </div>
+
+      <div class="pager" @click.stop>
+        <button class="pager__btn" type="button" :disabled="pageIndex >= pageCount - 1" @click="flip(1)">‹ 次頁</button>
+        <span class="pager__n tnum">{{ pageIndex + 1 }} / {{ pageCount }}</span>
+        <button class="pager__btn" type="button" :disabled="pageIndex <= 0" @click="flip(-1)">前頁 ›</button>
+      </div>
     </div>
 
     <div v-else class="reader__loading"><p class="empty">無法載入此卷</p></div>
 
-    <!-- 讀經設定:字級 · 紙色 -->
+    <!-- 讀經設定:字級 · 字體 · 紙色 -->
     <AppSheet v-model="settingsOpen" title="讀經設定">
       <p class="set-label">字級</p>
       <div class="set-row">
@@ -69,6 +75,20 @@
           @click="setFs(s.px)"
         >
           {{ s.name }}
+        </button>
+      </div>
+      <p class="set-label">字體</p>
+      <div class="set-row">
+        <button
+          v-for="f in FONTS"
+          :key="f.name"
+          class="set-opt"
+          :class="{ 'set-opt--on': font === f.css }"
+          type="button"
+          :style="{ fontFamily: f.css }"
+          @click="setFont(f.css)"
+        >
+          {{ f.name }}
         </button>
       </div>
       <p class="set-label">紙色</p>
@@ -143,20 +163,27 @@ const newCount = ref(0)
 const showMilestone = ref(false)
 const milestoneType = ref<'sutra_complete' | 'ten_complete' | 'hundred_complete'>('sutra_complete')
 
-const scrollEl = ref<HTMLElement | null>(null)
 const frameEl = ref<HTMLElement | null>(null)
 const showZ = ref(true)
 const fs = ref(30)
 const perCol = ref(18)
+const colsPerPage = ref(8)
+const pageIndex = ref(0)
 
-// — Reader settings (字級 · 紙色), remembered locally ——————
+// — Reader settings (字級 · 字體 · 紙色), remembered locally ——
 const settingsOpen = ref(false)
 const paper = ref('#f5f3da')
 const ink = ref('#14110c')
+const font = ref('"LXGW WenKai TC"')
 const FONT_SIZES = [
   { name: '小', px: 24 },
   { name: '中', px: 30 },
   { name: '大', px: 38 },
+]
+const FONTS = [
+  { name: '楷書', css: '"LXGW WenKai TC"' },
+  { name: '宋體', css: '"Noto Serif TC"' },
+  { name: '黑體', css: '"Noto Sans TC"' },
 ]
 const THEMES = [
   { name: '經黃', paper: '#f5f3da', ink: '#14110c' },
@@ -171,6 +198,7 @@ function loadSettings() {
     if (s.fs) fs.value = s.fs
     if (s.paper) paper.value = s.paper
     if (s.ink) ink.value = s.ink
+    if (s.font) font.value = s.font
     if (typeof s.showZ === 'boolean') showZ.value = s.showZ
   } catch {
     /* no saved prefs */
@@ -180,17 +208,25 @@ function saveSettings() {
   try {
     localStorage.setItem(
       'reader-prefs',
-      JSON.stringify({ fs: fs.value, paper: paper.value, ink: ink.value, showZ: showZ.value })
+      JSON.stringify({ fs: fs.value, paper: paper.value, ink: ink.value, font: font.value, showZ: showZ.value })
     )
   } catch {
     /* storage unavailable */
   }
 }
-async function setFs(px: number) {
-  fs.value = px
+async function relayout() {
   saveSettings()
   await nextTick()
   measure()
+  clampPage()
+}
+async function setFs(px: number) {
+  fs.value = px
+  await relayout()
+}
+async function setFont(css: string) {
+  font.value = css
+  await relayout()
 }
 function setTheme(t: { paper: string; ink: string }) {
   paper.value = t.paper
@@ -261,28 +297,35 @@ const columns = computed<RenderCell[][]>(() => {
   return out
 })
 
-// How many cells fit down one column, measured from the frame height.
+// The columns split into discrete pages that flip.
+const pages = computed<RenderCell[][][]>(() => {
+  const cols = columns.value
+  const per = Math.max(1, colsPerPage.value)
+  const out: RenderCell[][][] = []
+  for (let i = 0; i < cols.length; i += per) out.push(cols.slice(i, i + per))
+  return out.length ? out : [[]]
+})
+const pageCount = computed(() => pages.value.length)
+const currentPage = computed(() => pages.value[pageIndex.value] ?? [])
+
+// How many cells fit down a column, and how many columns across a page.
 function measure() {
   const el = frameEl.value
   if (!el) return
   const cs = getComputedStyle(el)
   const padY = parseFloat(cs.paddingTop) + parseFloat(cs.paddingBottom)
-  const avail = el.clientHeight - padY
-  const cellH = fs.value * 1.5
-  perCol.value = Math.max(6, Math.floor(avail / cellH))
+  const padX = parseFloat(cs.paddingLeft) + parseFloat(cs.paddingRight)
+  perCol.value = Math.max(6, Math.floor((el.clientHeight - padY) / (fs.value * 1.5)))
+  colsPerPage.value = Math.max(1, Math.floor((el.clientWidth - padX) / (fs.value * 1.5)))
+}
+function clampPage() {
+  if (pageIndex.value > pageCount.value - 1) pageIndex.value = pageCount.value - 1
+  if (pageIndex.value < 0) pageIndex.value = 0
 }
 
-// — Reading position (horizontal scroll ≈ the line) ————————
+// — Reading position ≈ which page ————————————————————
 function currentProgress(): number {
-  const el = scrollEl.value
-  if (!el) return 0
-  const max = el.scrollWidth - el.clientWidth
-  return max > 0 ? Math.min(1, Math.abs(el.scrollLeft) / max) : 0
-}
-let saveTimer: ReturnType<typeof setTimeout> | null = null
-function onScroll() {
-  if (saveTimer) clearTimeout(saveTimer)
-  saveTimer = setTimeout(saveMark, 500)
+  return pageCount.value > 1 ? pageIndex.value / (pageCount.value - 1) : 0
 }
 function markInput(progress: number) {
   return {
@@ -297,6 +340,20 @@ async function saveMark() {
   if (volume.value) await reading.mark(markInput(currentProgress()))
 }
 
+// dir +1 = 次頁 (leftward, forward); -1 = 前頁.
+function flip(dir: number) {
+  const next = pageIndex.value + dir
+  if (next < 0 || next > pageCount.value - 1) return
+  pageIndex.value = next
+  void saveMark()
+}
+// Tapping the left third of the page advances (text reads leftward).
+function onTapFlip(ev: MouseEvent) {
+  const w = (ev.currentTarget as HTMLElement).clientWidth
+  if (ev.clientX < w * 0.33) flip(1)
+  else if (ev.clientX > w * 0.67) flip(-1)
+}
+
 onMounted(async () => {
   try {
     loadSettings()
@@ -305,21 +362,27 @@ onMounted(async () => {
     await nextTick()
     measure()
     await nextTick()
+    // Resume at roughly the page last read in this same volume.
     const m = reading.last
-    if (m && m.sutraId === sutraId && m.volumeId === volumeId && scrollEl.value) {
-      const el = scrollEl.value
-      el.scrollLeft = -(m.progress * (el.scrollWidth - el.clientWidth))
+    if (m && m.sutraId === sutraId && m.volumeId === volumeId && pageCount.value > 1) {
+      pageIndex.value = Math.round(m.progress * (pageCount.value - 1))
+      clampPage()
     }
-    window.addEventListener('resize', measure)
+    window.addEventListener('resize', onResize)
     await saveMark()
   } finally {
     loading.value = false
   }
 })
 
+async function onResize() {
+  measure()
+  await nextTick()
+  clampPage()
+}
+
 onBeforeUnmount(() => {
-  window.removeEventListener('resize', measure)
-  if (saveTimer) clearTimeout(saveTimer)
+  window.removeEventListener('resize', onResize)
   void saveMark()
 })
 
@@ -379,7 +442,7 @@ function onCeremonyDismiss() {
   --tan: #bf9f62;
   --sutra-font: 'LXGW WenKai TC', 'BiauKai', 'DFKai-SB', serif;
   --cell-h: calc(var(--fs) * 1.5);
-  --col-pitch: calc(var(--fs) * 1.66);
+  --col-pitch: calc(var(--fs) * 1.5);
   height: 100vh;
   height: 100dvh;
   display: flex;
@@ -442,17 +505,59 @@ function onCeremonyDismiss() {
 /* — The page, scrolled horizontally (columns flow leftward) —— */
 .stage {
   flex: 1;
-  overflow-x: auto;
-  overflow-y: hidden;
-  overscroll-behavior-x: contain;
-  -webkit-overflow-scrolling: touch;
+  min-height: 0;
+  position: relative;
+  overflow: hidden;
+  cursor: pointer;
 }
 .page {
-  height: 100%;
+  position: absolute;
+  inset: 0;
   display: flex;
   flex-direction: row;
-  min-width: 100%;
-  width: max-content;
+}
+.page--flip {
+  animation: page-in 0.22s var(--ease) both;
+}
+@keyframes page-in {
+  from {
+    opacity: 0;
+  }
+}
+
+/* Page turn controls */
+.pager {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: calc(var(--tabbar-h) + var(--safe-b) + var(--s2));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--s3);
+  pointer-events: none;
+}
+.pager__btn {
+  pointer-events: auto;
+  padding: var(--s2) var(--s4);
+  border-radius: var(--r-full);
+  font-size: var(--text-caption);
+  color: #3a2c14;
+  background: rgba(245, 243, 218, 0.86);
+  border: 1px solid rgba(185, 151, 63, 0.5);
+  backdrop-filter: blur(var(--blur));
+  -webkit-backdrop-filter: blur(var(--blur));
+}
+.pager__btn:disabled {
+  opacity: 0.35;
+}
+.pager__n {
+  pointer-events: auto;
+  font-size: var(--text-micro);
+  color: #5c513a;
+  background: rgba(245, 243, 218, 0.86);
+  padding: 3px var(--s3);
+  border-radius: var(--r-full);
 }
 
 /* 書脊 */
@@ -559,21 +664,23 @@ function onCeremonyDismiss() {
   text-align: center;
   flex: 0 0 auto;
 }
+/* 注音緊貼漢字:僅留極小間距,注音欄緊隨其後 */
 .cell .zh {
   position: relative;
   flex: 0 0 auto;
-  margin-left: calc(var(--fs) * 0.2);
+  margin-left: calc(var(--fs) * 0.02);
   display: flex;
-  align-items: center;
+  align-items: flex-start;
+  padding-top: calc(var(--fs) * 0.08);
   height: 100%;
-  width: calc(var(--fs) * 0.3);
+  width: calc(var(--fs) * 0.32);
 }
 .cell .zh .syms {
   writing-mode: vertical-rl;
   text-orientation: upright;
   font-family: var(--sutra-font);
-  font-size: calc(var(--fs) * 0.3);
-  line-height: 0.98;
+  font-size: calc(var(--fs) * 0.32);
+  line-height: 1;
   letter-spacing: 0;
   color: var(--ink);
   display: block;
@@ -581,17 +688,17 @@ function onCeremonyDismiss() {
 }
 .cell .zh .tone {
   position: absolute;
-  font-size: calc(var(--fs) * 0.22);
+  font-size: calc(var(--fs) * 0.24);
   color: var(--ink);
-  left: calc(var(--fs) * 0.27);
+  left: calc(var(--fs) * 0.28);
   line-height: 1;
 }
 .cell .zh .tone.side {
-  top: 0;
+  top: calc(var(--fs) * 0.06);
 }
 .cell .zh .tone.neutral {
-  left: calc(var(--fs) * 0.03);
-  top: -0.34em;
+  left: calc(var(--fs) * 0.02);
+  top: calc(var(--fs) * -0.16);
 }
 
 /* 標點:破音書名號直線、刪節號三點、其餘直排標點 */

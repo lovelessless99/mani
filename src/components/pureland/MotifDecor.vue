@@ -302,6 +302,32 @@
         <TresMeshStandardMaterial color="#a0d8ff" :emissive="'#7ab8ff'" :emissive-intensity="1.2" />
       </TresMesh>
     </template>
+
+    <!-- 上層欲界天華嚴莊嚴:寶網羅列、寶樹行列、光明幢
+         夜摩 → 兜率 → 化樂 → 他化自在,愈上愈盛。 -->
+    <template v-if="lavish">
+      <!-- 寶網:懸空的珠玉羅網 -->
+      <TresMesh v-for="(j, i) in jewelNet" :key="'jn' + i" :position="j.pos">
+        <TresIcosahedronGeometry :args="[0.1, 0]" />
+        <TresMeshStandardMaterial :color="j.color" :emissive="j.color" :emissive-intensity="1.3" />
+      </TresMesh>
+      <!-- 寶樹行列:金幹寶葉 -->
+      <TresGroup v-for="(t, i) in jewelTrees" :key="'jt' + i" :position="t.pos">
+        <TresMesh :position="[0, 0.8, 0]">
+          <TresCylinderGeometry :args="[0.1, 0.14, 1.6, 6]" />
+          <TresMeshStandardMaterial color="#d9b45a" :metalness="0.7" :roughness="0.3" :emissive="'#6a4a10'" :emissive-intensity="0.2" />
+        </TresMesh>
+        <TresMesh :position="[0, 1.9, 0]">
+          <TresIcosahedronGeometry :args="[0.6, 0]" />
+          <TresMeshPhysicalMaterial :color="t.color" :transmission="0.7" :thickness="0.5" :roughness="0.06" :ior="1.6" :transparent="true" :opacity="0.92" :emissive="t.color" :emissive-intensity="0.3" />
+        </TresMesh>
+      </TresGroup>
+      <!-- 光明幢:中央上方一柱光明 -->
+      <TresMesh :position="[0, 4.4, 0]">
+        <TresIcosahedronGeometry :args="[0.5 + grandeur * 0.3, 1]" />
+        <TresMeshStandardMaterial color="#ffffff" :emissive="ornament" :emissive-intensity="2" :roughness="0.1" />
+      </TresMesh>
+    </template>
   </TresGroup>
 </template>
 
@@ -316,6 +342,45 @@ const rim = computed(() => props.heaven.sky[0])
 const ornament = computed(() =>
   props.heaven.realm === '欲界' ? '#c9a860' : props.heaven.realm === '色界' ? '#e8f2fb' : '#c8b4ee'
 )
+
+// 上層欲界天(夜摩→他化自在)加以華嚴莊嚴,愈上愈盛。
+const LAVISH = ['air', 'court', 'mirage', 'darkpalace']
+const lavish = computed(() => LAVISH.includes(motif.value))
+const grandeur = computed(() => Math.max(1, LAVISH.indexOf(motif.value) + 1)) // 1..4
+
+const JEWEL_COLORS = ['#7ab8ff', '#ffb0d8', '#a5f0d8', '#ffd873', '#c9a0ff', '#ff9a8a']
+
+// 寶網:a hanging lattice of jewels high above, denser the higher the天.
+const jewelNet = computed(() => {
+  const rings = 2 + grandeur.value
+  const out: { pos: [number, number, number]; color: string }[] = []
+  let n = 0
+  for (let r = 1; r <= rings; r++) {
+    const count = r * 6
+    const radius = r * 0.9
+    for (let k = 0; k < count; k++) {
+      const a = (k / count) * Math.PI * 2 + r * 0.4
+      out.push({
+        pos: [Math.cos(a) * radius, 3.4 + Math.sin(a * 2) * 0.25, Math.sin(a) * radius],
+        color: JEWEL_COLORS[n++ % JEWEL_COLORS.length],
+      })
+    }
+  }
+  return out
+})
+
+// 寶樹行列:jeweled trees ringing the terrace, more with grandeur.
+const jewelTrees = computed(() => {
+  const count = 2 + grandeur.value * 2
+  return Array.from({ length: count }, (_, i) => {
+    const a = (i / count) * Math.PI * 2 + 0.3
+    const radius = 3.6
+    return {
+      pos: [Math.cos(a) * radius, 0, Math.sin(a) * radius] as [number, number, number],
+      color: JEWEL_COLORS[i % JEWEL_COLORS.length],
+    }
+  })
+})
 
 // 四方守護,方色各別（東青、南赤、西白、北玄）
 const guardians = [
