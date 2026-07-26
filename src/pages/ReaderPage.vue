@@ -1,9 +1,10 @@
 <template>
-  <main class="reader" :style="{ '--fs': fs + 'px' }">
+  <main class="reader" :style="{ '--fs': fs + 'px', '--paper': paper, '--ink': ink }">
     <header class="bar">
       <AppButton icon="back" icon-only variant="ghost" aria-label="返回" @click="router.back()" />
       <h1 class="bar__title">{{ volume?.titleZh ?? '載入中' }}</h1>
-      <button class="bar__z" type="button" :class="{ 'bar__z--on': showZ }" @click="showZ = !showZ">注音</button>
+      <button class="bar__z" type="button" :class="{ 'bar__z--on': showZ }" @click="showZ = !showZ; saveSettings()">注音</button>
+      <button class="bar__z" type="button" aria-label="設定" @click="settingsOpen = true">設定</button>
       <AppButton
         v-if="volume"
         :icon="recitedThisSession ? 'checkCircle' : 'circle'"
@@ -54,6 +55,37 @@
     </div>
 
     <div v-else class="reader__loading"><p class="empty">無法載入此卷</p></div>
+
+    <!-- 讀經設定:字級 · 紙色 -->
+    <AppSheet v-model="settingsOpen" title="讀經設定">
+      <p class="set-label">字級</p>
+      <div class="set-row">
+        <button
+          v-for="s in FONT_SIZES"
+          :key="s.px"
+          class="set-opt"
+          :class="{ 'set-opt--on': fs === s.px }"
+          type="button"
+          @click="setFs(s.px)"
+        >
+          {{ s.name }}
+        </button>
+      </div>
+      <p class="set-label">紙色</p>
+      <div class="set-row">
+        <button
+          v-for="t in THEMES"
+          :key="t.name"
+          class="set-swatch"
+          :class="{ 'set-swatch--on': paper === t.paper }"
+          type="button"
+          :style="{ background: t.paper, color: t.ink }"
+          @click="setTheme(t)"
+        >
+          {{ t.name }}
+        </button>
+      </div>
+    </AppSheet>
 
     <AppSheet v-model="showCompleteDialog">
       <div class="done">
@@ -116,6 +148,55 @@ const frameEl = ref<HTMLElement | null>(null)
 const showZ = ref(true)
 const fs = ref(30)
 const perCol = ref(18)
+
+// — Reader settings (字級 · 紙色), remembered locally ——————
+const settingsOpen = ref(false)
+const paper = ref('#f5f3da')
+const ink = ref('#14110c')
+const FONT_SIZES = [
+  { name: '小', px: 24 },
+  { name: '中', px: 30 },
+  { name: '大', px: 38 },
+]
+const THEMES = [
+  { name: '經黃', paper: '#f5f3da', ink: '#14110c' },
+  { name: '素白', paper: '#faf8f0', ink: '#1a1712' },
+  { name: '仿古', paper: '#ece0c0', ink: '#2a1c0f' },
+  { name: '夜讀', paper: '#1a1712', ink: '#e8dcc0' },
+]
+
+function loadSettings() {
+  try {
+    const s = JSON.parse(localStorage.getItem('reader-prefs') || '{}')
+    if (s.fs) fs.value = s.fs
+    if (s.paper) paper.value = s.paper
+    if (s.ink) ink.value = s.ink
+    if (typeof s.showZ === 'boolean') showZ.value = s.showZ
+  } catch {
+    /* no saved prefs */
+  }
+}
+function saveSettings() {
+  try {
+    localStorage.setItem(
+      'reader-prefs',
+      JSON.stringify({ fs: fs.value, paper: paper.value, ink: ink.value, showZ: showZ.value })
+    )
+  } catch {
+    /* storage unavailable */
+  }
+}
+async function setFs(px: number) {
+  fs.value = px
+  saveSettings()
+  await nextTick()
+  measure()
+}
+function setTheme(t: { paper: string; ink: string }) {
+  paper.value = t.paper
+  ink.value = t.ink
+  saveSettings()
+}
 
 const volumeIdDisplay = computed(() => parseInt(volumeId, 10).toString())
 
@@ -218,6 +299,7 @@ async function saveMark() {
 
 onMounted(async () => {
   try {
+    loadSettings()
     await reading.load()
     volume.value = await loadVolume(sutraId, volumeId)
     await nextTick()
@@ -556,6 +638,51 @@ function onCeremonyDismiss() {
   height: 0.18em;
   border-radius: 50%;
   background: var(--ink);
+}
+
+/* — Settings sheet ————————————————————————— */
+.set-label {
+  margin-top: var(--s4);
+  font-size: var(--text-micro);
+  letter-spacing: 0.14em;
+  color: var(--text-faint);
+}
+.set-label:first-child {
+  margin-top: 0;
+}
+.set-row {
+  margin-top: var(--s2);
+  display: flex;
+  gap: var(--s2);
+  flex-wrap: wrap;
+}
+.set-opt {
+  flex: 1;
+  min-width: 3rem;
+  padding: var(--s3);
+  border-radius: var(--r-md);
+  font-size: var(--text-caption);
+  color: var(--text-dim);
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--hairline);
+}
+.set-opt--on {
+  color: var(--text);
+  background: rgba(167, 139, 250, 0.16);
+  border-color: rgba(167, 139, 250, 0.5);
+}
+.set-swatch {
+  flex: 1;
+  min-width: 3.5rem;
+  padding: var(--s3);
+  border-radius: var(--r-md);
+  font-size: var(--text-caption);
+  font-family: 'LXGW WenKai TC', var(--font-serif);
+  border: 1px solid var(--hairline-strong);
+}
+.set-swatch--on {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
 }
 
 /* — Completion sheet ——————————————————————— */

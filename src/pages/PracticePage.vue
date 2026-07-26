@@ -16,7 +16,7 @@
       :class="{ 'deck--done': allDailyDone }"
     >
       <div class="deck__head">
-        <div class="deck__ribbon">今日功課</div>
+        <div class="deck__ribbon">{{ daily.fastDay.value ? '十齋日 · 念地藏經' : '今日功課' }}</div>
         <span v-if="daily.lightened.value" class="deck__ease">量力而修 · 今日從簡</span>
         <span class="deck__rank">{{ rankInfo.rank.value.name }}</span>
       </div>
@@ -62,6 +62,29 @@
         </li>
       </ul>
       <p v-if="allDailyDone" class="deck__all-done">✦ 今日功課圓滿 ✦</p>
+    </section>
+
+    <!-- 加分持戒 — daily bonus observances -->
+    <section v-if="!progressStore.loading" class="obs">
+      <p class="obs__head">加分持戒 · 今日</p>
+      <ul class="obs__list">
+        <li v-for="o in OBSERVANCES" :key="o.id">
+          <button
+            class="ob"
+            type="button"
+            :class="{ 'ob--on': observance.isChecked(o.id) }"
+            @click="observance.toggle(o.id)"
+          >
+            <span class="ob__check">
+              <AppIcon v-if="observance.isChecked(o.id)" name="check" :size="13" />
+            </span>
+            <span class="ob__main">
+              <span class="ob__name">{{ o.name }}</span>
+              <span class="ob__desc">{{ o.desc }}</span>
+            </span>
+          </button>
+        </li>
+      </ul>
     </section>
 
     <GlassCard v-if="!progressStore.loading && drillable.length" clickable class="memo" @click="pickerOpen = true">
@@ -130,6 +153,22 @@
       :title="activeSutra?.titleZh"
       :subtitle="`點右側圓圈記錄一${activeSutra?.unit ?? '遍'}`"
     >
+      <!-- 本經成就 · 念了幾遍 -->
+      <div v-if="activeSutra" class="ssheet">
+        <p class="ssheet__stats tnum">
+          念滿 <b>{{ activeSutra.sum }}</b> 遍 · 圓滿 <b>{{ activeSutra.rounds }}</b> 部 ·
+          <span class="ssheet__master">{{ sutraMasteryOf(activeSutra.rounds).name }}</span>
+        </p>
+        <div class="ssheet__ach">
+          <span v-for="a in sutraAchievements" :key="a.name" class="ach" :class="{ 'ach--on': a.done }">
+            {{ a.done ? '✦ ' : '' }}{{ a.name }}
+          </span>
+        </div>
+        <AppButton variant="glass" icon="book" block class="ssheet__read" @click="readSutra">
+          直排注音讀經
+        </AppButton>
+      </div>
+
       <ul class="chapters">
         <li v-for="c in chapters" :key="c.id" class="chapter glass">
           <div class="chapter__main">
@@ -224,6 +263,7 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
+import { useRouter } from 'vue-router'
 import GlassCard from 'src/components/GlassCard.vue'
 import AppIcon from 'src/components/ui/AppIcon.vue'
 import AppSpinner from 'src/components/ui/AppSpinner.vue'
@@ -236,6 +276,8 @@ import { useGemStore } from 'src/stores/gemStore'
 import { useStreakStore } from 'src/stores/streakStore'
 import { useAchievementStore } from 'src/stores/achievementStore'
 import { useDailyStore } from 'src/stores/dailyStore'
+import { useObservanceStore } from 'src/stores/observanceStore'
+import observancesData from 'src/data/meta/observances.json'
 import { getAllSutras, getSutraMeta, loadVolume } from 'src/services/sutraService'
 import { SUTRA_GEM_SHAPE } from 'src/services/gemService'
 import { useToast, describeError } from 'src/composables/useToast'
@@ -261,12 +303,15 @@ const CHAPTERS = chaptersData as unknown as Record<string, SutraChapters>
 
 const GEM_CAP = 88
 
+const router = useRouter()
 const progressStore = useProgressStore()
 const gemStore = useGemStore()
 const streakStore = useStreakStore()
 const achievementStore = useAchievementStore()
 const chime = useChime()
 const dailyStore = useDailyStore()
+const observance = useObservanceStore()
+const OBSERVANCES = observancesData as { id: string; name: string; desc: string }[]
 const daily = useDailyTask()
 const rankInfo = useRank()
 
@@ -455,6 +500,31 @@ function sutraMasteryOf(rounds: number) {
   for (const level of SUTRA_MASTERY) if (rounds >= level.at) m = level
   const next = SUTRA_MASTERY.find((l) => l.at > rounds) ?? null
   return { ...m, next, toNext: next ? next.at - rounds : 0 }
+}
+
+// 本經成就 — milestones each sutra can reach, by its own 遍數 / 部數.
+const SUTRA_ACH = [
+  { name: '初誦', metric: 'sum', at: 1 },
+  { name: '十遍', metric: 'sum', at: 10 },
+  { name: '百遍', metric: 'sum', at: 100 },
+  { name: '圓滿一部', metric: 'rounds', at: 1 },
+  { name: '圓滿十部', metric: 'rounds', at: 10 },
+] as const
+
+const sutraAchievements = computed(() => {
+  const s = activeSutra.value
+  return SUTRA_ACH.map((a) => ({
+    name: a.name,
+    done: (a.metric === 'sum' ? (s?.sum ?? 0) : (s?.rounds ?? 0)) >= a.at,
+  }))
+})
+
+// Open the sutra in the 直排注音 e-book reader, at its first 卷/品.
+function readSutra() {
+  const s = activeSutra.value
+  if (!s) return
+  const first = CHAPTERS[s.id]?.items[0]?.id
+  if (first) router.push(`/reader/${s.id}/${first}`)
 }
 function masteryOf(sutraId: string, chapterId: string) {
   const n = countFor(sutraId, chapterId, 'memorize')
@@ -660,6 +730,7 @@ onMounted(async () => {
       gemStore.loadGems(),
       streakStore.load(),
       dailyStore.load(),
+      observance.load(),
     ])
   } catch (e) {
     toast.error(describeError(e))
@@ -962,6 +1033,113 @@ onMounted(async () => {
   letter-spacing: 0.16em;
   text-indent: 0.16em;
   color: #86efac;
+}
+
+/* — 本經成就 sheet header ——————————————————————— */
+.ssheet {
+  margin-bottom: var(--s4);
+  padding-bottom: var(--s4);
+  border-bottom: 1px solid var(--hairline);
+}
+.ssheet__stats {
+  font-size: var(--text-caption);
+  color: var(--text-dim);
+}
+.ssheet__stats b {
+  color: var(--text);
+  font-weight: 500;
+}
+.ssheet__master {
+  color: var(--amber);
+}
+.ssheet__ach {
+  margin-top: var(--s3);
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s2);
+}
+.ach {
+  padding: 3px var(--s2);
+  border-radius: var(--r-full);
+  font-size: var(--text-micro);
+  letter-spacing: 0.06em;
+  color: var(--text-faint);
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--hairline);
+}
+.ach--on {
+  color: var(--amber);
+  background: rgba(251, 191, 36, 0.1);
+  border-color: rgba(251, 191, 36, 0.4);
+}
+.ssheet__read {
+  margin-top: var(--s3);
+}
+
+/* — 加分持戒 observances ——————————————————————— */
+.obs {
+  margin-top: var(--s3);
+  padding: var(--s3) var(--s4) var(--s4);
+  border-radius: var(--r-lg);
+  background: rgba(134, 239, 172, 0.05);
+  border: 1px solid rgba(134, 239, 172, 0.22);
+}
+.obs__head {
+  font-size: var(--text-micro);
+  letter-spacing: 0.16em;
+  text-indent: 0.16em;
+  color: #86efac;
+}
+.obs__list {
+  list-style: none;
+  margin-top: var(--s3);
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--s2);
+}
+.ob {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: var(--s2);
+  padding: var(--s2) var(--s3);
+  border-radius: var(--r-md);
+  text-align: left;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--hairline);
+  transition: background var(--fast) var(--ease);
+}
+.ob--on {
+  background: rgba(134, 239, 172, 0.1);
+  border-color: rgba(134, 239, 172, 0.4);
+}
+.ob__check {
+  flex-shrink: 0;
+  width: 18px;
+  height: 18px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  border: 1px solid var(--hairline-strong);
+  color: #071108;
+}
+.ob--on .ob__check {
+  background: #86efac;
+  border-color: #86efac;
+}
+.ob__main {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+.ob__name {
+  font-size: var(--text-caption);
+  letter-spacing: 0.04em;
+}
+.ob__desc {
+  font-size: 10px;
+  color: var(--text-faint);
+  line-height: 1.4;
 }
 
 .memo {

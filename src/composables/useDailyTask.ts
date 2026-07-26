@@ -3,6 +3,9 @@ import { getAllSutras } from 'src/services/sutraService'
 import chaptersData from 'src/data/meta/sutra-chapters.json'
 import { useRank } from 'src/composables/useRank'
 import { useStreakStore } from 'src/stores/streakStore'
+import { useFastDay } from 'src/composables/useFastDay'
+
+const KSITIGARBHA_ID = 'ksitigarbha'
 
 /**
  * 今日功課籤 — a small assigned reading, drawn for the day and sized by rank.
@@ -44,6 +47,10 @@ export interface DailyItem {
 export function useDailyTask() {
   const { rank } = useRank()
   const streak = useStreakStore()
+  const fast = useFastDay()
+
+  // 十齋日以地藏經為本課;其餘日子以華嚴為主。
+  const fastDay = computed(() => fast.isFastDay.value)
 
   /**
    * 量力而修 — soften the load after a lapse. Coming back cold, one 卷 is
@@ -81,18 +88,23 @@ export function useDailyTask() {
       })
     }
 
-    // 華嚴經 — take the eased number of consecutive 卷, never the last one.
-    const hua = CHAPTERS[HUAYAN_ID]
-    if (hua && hua.items.length > 1) {
-      const pool = hua.items.slice(0, hua.items.length - 1) // exclude final 卷
-      const want = Math.min(eased.value.huayan, pool.length)
+    // The day's main text: 地藏經 on a 十齋日, otherwise 華嚴經 (whose final
+    // 卷 is held back). Drawn deterministically so the card is stable.
+    const mainId = fastDay.value ? KSITIGARBHA_ID : HUAYAN_ID
+    const main = CHAPTERS[mainId]
+    if (main && main.items.length) {
+      const pool =
+        mainId === HUAYAN_ID && main.items.length > 1
+          ? main.items.slice(0, main.items.length - 1)
+          : main.items
+      const want = Math.min(Math.max(1, eased.value.huayan), pool.length)
       const start = day % pool.length
-      for (let k = 0; k < want; k++) push(HUAYAN_ID, pool[(start + k) % pool.length], hua.unit)
+      for (let k = 0; k < want; k++) push(mainId, pool[(start + k) % pool.length], main.unit)
     }
 
     // Other sutras — one unit each, from as many distinct texts as the eased
     // load allows, chosen deterministically so the set is stable for the day.
-    const others = sutras.filter((s) => s.id !== HUAYAN_ID && (CHAPTERS[s.id]?.items.length ?? 0) > 0)
+    const others = sutras.filter((s) => s.id !== mainId && (CHAPTERS[s.id]?.items.length ?? 0) > 0)
     const wantOthers = Math.min(eased.value.others, others.length)
     for (let k = 0; k < wantOthers; k++) {
       const s = others[(day + k) % others.length]
@@ -104,5 +116,5 @@ export function useDailyTask() {
     return out
   })
 
-  return { items, lightened }
+  return { items, lightened, fastDay }
 }
