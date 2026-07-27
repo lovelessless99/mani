@@ -20,7 +20,13 @@
     <div v-if="loading" class="reader__loading"><AppSpinner :size="34" /></div>
 
     <!-- 線裝書頁:書脊 · 界欄 · 書名籤 · 翻頁分頁 -->
-    <div v-else-if="volume" class="stage" @click="onTapFlip">
+    <div
+      v-else-if="volume"
+      class="stage"
+      @click="onTapFlip"
+      @touchstart.passive="onTouchStart"
+      @touchend.passive="onTouchEnd"
+    >
       <div :key="pageIndex" class="page page--flip" :class="{ 'z-on': showZ }">
         <div class="spine">
           <span class="spine__lbl">{{ volume.titleZh }}</span>
@@ -141,7 +147,7 @@ import { loadVolume } from 'src/services/sutraService'
 import { useProgressStore } from 'src/stores/progressStore'
 import { useGemStore } from 'src/stores/gemStore'
 import { useReadingStore } from 'src/stores/readingStore'
-import { zhuyinOf, splitZhuyin, type Zhuyin } from 'src/composables/useZhuyin'
+import { zhuyinForChars, splitZhuyin, type Zhuyin } from 'src/composables/useZhuyin'
 import type { SutraVolume } from 'src/types/sutra'
 import avatamsakaMap from 'src/data/meta/avatamsaka-gem-map.json'
 
@@ -250,12 +256,16 @@ function isCJK(ch: string): boolean {
 }
 
 function buildCells(text: string): Cell[] {
+  const chars = [...text]
+  // Phrase-aware 注音, so 破音詞 (般若、南無、兜率…) read correctly.
+  const zy = zhuyinForChars(chars)
   const cells: Cell[] = []
-  for (const ch of text) {
+  for (let i = 0; i < chars.length; i++) {
+    const ch = chars[i]
     if (ch === '\n') {
       cells.push({ t: 'break' })
     } else if (isCJK(ch)) {
-      cells.push({ t: 'han', ch, zy: splitZhuyin(zhuyinOf(ch)) })
+      cells.push({ t: 'han', ch, zy: splitZhuyin(zy[i]) })
     } else if (ch.trim() === '') {
       // skip whitespace
     } else if (DASH.has(ch)) {
@@ -352,6 +362,16 @@ function onTapFlip(ev: MouseEvent) {
   const w = (ev.currentTarget as HTMLElement).clientWidth
   if (ev.clientX < w * 0.33) flip(1)
   else if (ev.clientX > w * 0.67) flip(-1)
+}
+
+// Swipe like an e-book: leftward advances, rightward goes back.
+let touchX = 0
+function onTouchStart(ev: TouchEvent) {
+  touchX = ev.changedTouches[0]?.clientX ?? 0
+}
+function onTouchEnd(ev: TouchEvent) {
+  const dx = (ev.changedTouches[0]?.clientX ?? 0) - touchX
+  if (Math.abs(dx) > 40) flip(dx < 0 ? 1 : -1)
 }
 
 onMounted(async () => {
