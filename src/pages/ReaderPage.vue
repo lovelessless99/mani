@@ -28,6 +28,16 @@
       @touchend.passive="onTouchEnd"
     >
       <div :key="pageIndex" class="page page--flip" :class="{ 'z-on': showZ }">
+        <!-- 封面:綠布書衣、描金書名匾 -->
+        <div v-if="isCover" class="cover">
+          <div class="cover-pat">
+            <div class="cover-plaque">
+              <span class="cover-plaque__t">{{ volume.titleZh }}</span>
+            </div>
+          </div>
+          <div class="cover-spine" />
+        </div>
+
         <div class="spine">
           <span class="spine__lbl">{{ volume.titleZh }}</span>
           <span class="spine__num tnum">{{ volumeIdDisplay }}</span>
@@ -315,8 +325,10 @@ const pages = computed<RenderCell[][][]>(() => {
   for (let i = 0; i < cols.length; i += per) out.push(cols.slice(i, i + per))
   return out.length ? out : [[]]
 })
-const pageCount = computed(() => pages.value.length)
-const currentPage = computed(() => pages.value[pageIndex.value] ?? [])
+// Page 0 is the cover; text pages follow.
+const pageCount = computed(() => pages.value.length + 1)
+const isCover = computed(() => pageIndex.value === 0)
+const currentPage = computed(() => pages.value[pageIndex.value - 1] ?? [])
 
 // How many cells fit down a column, and how many columns across a page.
 function measure() {
@@ -326,7 +338,7 @@ function measure() {
   const padY = parseFloat(cs.paddingTop) + parseFloat(cs.paddingBottom)
   const padX = parseFloat(cs.paddingLeft) + parseFloat(cs.paddingRight)
   perCol.value = Math.max(6, Math.floor((el.clientHeight - padY) / (fs.value * 1.5)))
-  colsPerPage.value = Math.max(1, Math.floor((el.clientWidth - padX) / (fs.value * 1.5)))
+  colsPerPage.value = Math.max(1, Math.floor((el.clientWidth - padX) / (fs.value * 1.6)))
 }
 function clampPage() {
   if (pageIndex.value > pageCount.value - 1) pageIndex.value = pageCount.value - 1
@@ -462,7 +474,7 @@ function onCeremonyDismiss() {
   --tan: #bf9f62;
   --sutra-font: 'LXGW WenKai TC', 'BiauKai', 'DFKai-SB', serif;
   --cell-h: calc(var(--fs) * 1.5);
-  --col-pitch: calc(var(--fs) * 1.5);
+  --col-pitch: calc(var(--fs) * 1.6);
   height: 100vh;
   height: 100dvh;
   display: flex;
@@ -580,9 +592,64 @@ function onCeremonyDismiss() {
   border-radius: var(--r-full);
 }
 
-/* 書脊 */
+/* 封面(綠布書衣 · 描金書名匾) */
+.cover {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  display: flex;
+  flex-direction: row;
+}
+.cover-pat {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: #5c8a3c;
+  background-image:
+    linear-gradient(45deg, rgba(0, 0, 0, 0.08) 25%, transparent 25%, transparent 75%, rgba(0, 0, 0, 0.08) 75%),
+    linear-gradient(45deg, rgba(0, 0, 0, 0.08) 25%, transparent 25%, transparent 75%, rgba(0, 0, 0, 0.08) 75%);
+  background-size: 44px 44px;
+  background-position: 0 0, 22px 22px;
+}
+.cover-spine {
+  flex: 0 0 12%;
+  align-self: stretch;
+  background: linear-gradient(90deg, #2a1b10, #4a3420 55%, #2a1b10);
+  box-shadow: inset 2px 0 6px rgba(0, 0, 0, 0.35);
+}
+.cover-plaque {
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8% 4%;
+  min-height: 62%;
+  background: #2f3d1e;
+  border: 2.5px solid var(--gold-lt);
+  box-shadow:
+    0 0 0 1px rgba(0, 0, 0, 0.35),
+    0 6px 22px rgba(0, 0, 0, 0.35),
+    inset 0 0 0 1px rgba(0, 0, 0, 0.3),
+    inset 0 0 26px rgba(0, 0, 0, 0.34);
+}
+.cover-plaque__t {
+  writing-mode: vertical-rl;
+  text-orientation: upright;
+  font-family: var(--sutra-font);
+  font-weight: 700;
+  font-size: calc(var(--fs) * 1.15);
+  line-height: 1.16;
+  letter-spacing: 0.02em;
+  color: #e9ce8b;
+  white-space: nowrap;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.6);
+}
+
+/* 書脊(印經坊原式 7.33% 寬) */
 .spine {
-  flex: 0 0 26px;
+  flex: 0 0 7.33%;
   align-self: stretch;
   position: relative;
   display: flex;
@@ -597,7 +664,7 @@ function onCeremonyDismiss() {
   font-size: 11px;
   color: var(--ink);
   letter-spacing: 0.02em;
-  padding-top: 10%;
+  padding-top: 6%;
   white-space: nowrap;
   line-height: 1;
 }
@@ -613,14 +680,14 @@ function onCeremonyDismiss() {
   min-height: 0;
   display: flex;
   align-items: stretch;
-  padding: 3% 4% 3% 8px;
+  padding: 1.4% 6.95% 1.8% 0;
 }
 
 /* 書名籤(硃砂底、描金框、書名直排) */
 .cartouche {
-  flex: 0 0 calc(var(--fs) * 2.2);
+  flex: 0 0 calc(var(--fs) * 2.4);
   align-self: center;
-  height: 82%;
+  height: 100%;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -645,10 +712,10 @@ function onCeremonyDismiss() {
 .frame {
   flex: 1;
   min-height: 0;
-  margin-left: 10px;
+  margin-left: 1.13%;
   background: var(--paper);
   border: 1px solid var(--gold);
-  padding: calc(var(--fs) * 0.5) calc(var(--fs) * 0.6);
+  padding: 10px 16px 14px 24px;
   overflow: hidden;
 }
 .cols {
@@ -684,23 +751,22 @@ function onCeremonyDismiss() {
   text-align: center;
   flex: 0 0 auto;
 }
-/* 注音緊貼漢字:僅留極小間距,注音欄緊隨其後 */
+/* 注音:字 + 右側直行注音(依印經坊原式) */
 .cell .zh {
   position: relative;
   flex: 0 0 auto;
-  margin-left: calc(var(--fs) * 0.02);
+  margin-left: calc(var(--fs) * 0.23);
   display: flex;
-  align-items: flex-start;
-  padding-top: calc(var(--fs) * 0.08);
+  align-items: center;
   height: 100%;
-  width: calc(var(--fs) * 0.32);
+  width: calc(var(--fs) * 0.27);
 }
 .cell .zh .syms {
   writing-mode: vertical-rl;
   text-orientation: upright;
   font-family: var(--sutra-font);
-  font-size: calc(var(--fs) * 0.32);
-  line-height: 1;
+  font-size: calc(var(--fs) * 0.27);
+  line-height: 0.98;
   letter-spacing: 0;
   color: var(--ink);
   display: block;
@@ -708,17 +774,17 @@ function onCeremonyDismiss() {
 }
 .cell .zh .tone {
   position: absolute;
-  font-size: calc(var(--fs) * 0.24);
+  font-size: calc(var(--fs) * 0.2);
   color: var(--ink);
-  left: calc(var(--fs) * 0.28);
+  left: calc(var(--fs) * 0.25);
   line-height: 1;
 }
 .cell .zh .tone.side {
-  top: calc(var(--fs) * 0.06);
+  top: 0;
 }
 .cell .zh .tone.neutral {
-  left: calc(var(--fs) * 0.02);
-  top: calc(var(--fs) * -0.16);
+  left: calc(var(--fs) * 0.03);
+  top: -0.34em;
 }
 
 /* 標點:破音書名號直線、刪節號三點、其餘直排標點 */
