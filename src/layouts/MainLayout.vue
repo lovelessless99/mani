@@ -6,7 +6,7 @@
       </Transition>
     </RouterView>
 
-    <nav class="dock-wrap">
+    <nav v-if="!immersive" class="dock-wrap">
       <div class="dock">
         <RouterLink
           v-for="tab in tabs"
@@ -24,10 +24,15 @@
 </template>
 
 <script setup lang="ts">
+import { computed } from 'vue'
 import { useRoute } from 'vue-router'
 import AppIcon from 'src/components/ui/AppIcon.vue'
 
 const route = useRoute()
+
+// The reader is fully immersive — its own pager sits at the bottom, so the
+// floating dock would only cover the page-turn controls.
+const immersive = computed(() => route.path.startsWith('/reader'))
 
 const tabs = [
   { to: '/', icon: 'home', label: '今日' },

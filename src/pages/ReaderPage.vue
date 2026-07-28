@@ -3,15 +3,25 @@
     <button class="reader__chip reader__back" type="button" aria-label="返回" @click="router.back()">
       <AppIcon name="back" :size="20" />
     </button>
-    <button
-      v-if="ready"
-      class="reader__chip reader__set"
-      type="button"
-      :class="{ 'reader__set--on': panelShown }"
-      @click="togglePanel"
-    >
-      設定
-    </button>
+    <div v-if="ready" class="reader__top">
+      <select
+        v-if="chapters.length > 1"
+        class="reader__chip reader__chap"
+        :value="curChapter"
+        aria-label="跳至章節"
+        @change="jumpChapter(($event.target as HTMLSelectElement).value)"
+      >
+        <option v-for="c in chapters" :key="c.value" :value="c.value">{{ c.label }}</option>
+      </select>
+      <button
+        class="reader__chip reader__set"
+        type="button"
+        :class="{ 'reader__set--on': panelShown }"
+        @click="togglePanel"
+      >
+        設定
+      </button>
+    </div>
 
     <div v-if="!ready" class="reader__loading"><AppSpinner :size="34" /></div>
 
@@ -40,6 +50,8 @@ const sutraId = route.params.sutraId as string
 const frame = ref<HTMLIFrameElement | null>(null)
 const ready = ref(false)
 const panelShown = ref(false)
+const chapters = ref<{ value: string; label: string }[]>([])
+const curChapter = ref('')
 
 // App sutra → 印經坊 built-in preset (its own CBETA text/typesetting).
 const PRESET: Record<string, string> = {
@@ -51,13 +63,20 @@ const PRESET: Record<string, string> = {
   avatamsaka: '華嚴經1',
 }
 
-// Reading view: hide the editor panel + export/preview, let the single page
-// fill the screen. 設定 toggles the panel back for font/theme/chapter.
+// Reading view: hide the editor panel + export/preview, let the two-page
+// spread fill the screen, and give each turned page a gentle flip. 設定
+// toggles the panel back for font/theme; the top chapter select jumps.
 const READER_CSS = `
   #btn-download, #btn-preview, #btn-print, #preview, #dl-status { display: none !important; }
   body.app-read #panel { display: none !important; }
   body.app-read { overflow: hidden !important; height: 100vh !important; }
   body.app-read #view { height: 100vh !important; }
+  body.app-read .stage { perspective: 2000px; }
+  body.app-read .page.active { animation: app-turn .42s cubic-bezier(.22,.61,.36,1) both; }
+  @keyframes app-turn {
+    from { opacity: 0; transform: rotateY(9deg) translateX(16px); }
+    to   { opacity: 1; transform: none; }
+  }
 `
 
 function idoc(): Document | null {
@@ -78,13 +97,26 @@ function togglePanel() {
   ;(panelShown.value ? el('panel') : el('view'))?.scrollIntoView()
 }
 
-let configured = false
+// Mirror the printer's own chapter <select> into the overlay chip, and keep
+// the chip in sync as page-turns move between chapters.
+function syncChapters() {
+  const sel = el<HTMLSelectElement>('in-chapter')
+  chapters.value = sel ? [...sel.options].map((o) => ({ value: o.value, label: o.textContent ?? '' })) : []
+  curChapter.value = sel?.value ?? ''
+}
+function jumpChapter(value: string) {
+  const sel = el<HTMLSelectElement>('in-chapter')
+  if (!sel) return
+  sel.value = value
+  fire(sel)
+  curChapter.value = value
+}
 
 /**
- * Drive the embedded 印經坊: pick the sutra, force single-page, re-typeset,
- * then switch into the clean reading view. The bundled sutra library
- * decompresses asynchronously, so readiness is detected by the text box
- * actually filling after the preset is chosen — clearing it first makes a
+ * Drive the embedded 印經坊: pick the sutra and re-typeset, then switch into
+ * the clean reading view (keeping its two-page spread). The bundled sutra
+ * library decompresses asynchronously, so readiness is detected by the text
+ * box actually filling after the preset is chosen — clearing it first makes a
  * stale default (金剛經) impossible to mistake for a successful load.
  */
 function drive(attempt = 0): void {
@@ -112,17 +144,6 @@ function drive(attempt = 0): void {
     return
   }
 
-  // Single page for the phone (the site defaults to a two-page spread).
-  if (!configured) {
-    for (const id of ['opt-spread', 'opt-twopage']) {
-      const c = el<HTMLInputElement>(id)
-      if (c?.checked) {
-        c.checked = false
-        fire(c)
-      }
-    }
-    configured = true
-  }
   el<HTMLButtonElement>('btn-run')?.click()
 
   if (doc.querySelector('.page')) {
@@ -133,6 +154,10 @@ function drive(attempt = 0): void {
       doc.head.appendChild(style)
     }
     doc.body.classList.add('app-read')
+    // Keep the chapter chip current as the reader pages through the book.
+    doc.getElementById('btn-next')?.addEventListener('click', () => setTimeout(syncChapters, 0))
+    doc.getElementById('btn-prev')?.addEventListener('click', () => setTimeout(syncChapters, 0))
+    syncChapters()
     ready.value = true
     return
   }
@@ -142,7 +167,7 @@ function drive(attempt = 0): void {
 function onLoad() {
   ready.value = false
   panelShown.value = false
-  configured = false
+  chapters.value = []
   drive()
 }
 </script>
@@ -192,8 +217,18 @@ function onLoad() {
   left: var(--s3);
   width: 40px;
 }
-.reader__set {
+.reader__top {
+  position: absolute;
+  z-index: 5;
+  top: calc(var(--safe-t) + var(--s3));
   right: var(--s3);
+  display: flex;
+  gap: var(--s2);
+}
+.reader__top .reader__chip {
+  position: static;
+}
+.reader__set {
   padding: 0 var(--s4);
   font-size: var(--text-caption);
   letter-spacing: 0.1em;
@@ -201,5 +236,17 @@ function onLoad() {
 .reader__set--on {
   color: #e8ce8e;
   border-color: rgba(201, 162, 78, 0.5);
+}
+.reader__chap {
+  max-width: 9rem;
+  padding: 0 var(--s3);
+  font-size: var(--text-caption);
+  letter-spacing: 0.06em;
+  appearance: none;
+  -webkit-appearance: none;
+  cursor: pointer;
+}
+.reader__chap option {
+  color: #1a1a1a;
 }
 </style>
