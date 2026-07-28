@@ -35,10 +35,23 @@
       @load="onLoad"
     />
 
-    <!-- Progress only — pages turn by dragging the bottom corner -->
+    <!-- Tap left = next, right = prev · drag the bar to scrub -->
     <div v-if="ready && !panelShown" class="reader__hud">
       <span class="reader__ind">{{ cur + 1 }} / {{ total }}</span>
-      <div class="reader__progress"><i :style="{ transform: `scaleX(${progress})` }" /></div>
+      <div
+        ref="barEl"
+        class="reader__scrub"
+        role="slider"
+        :aria-valuenow="cur + 1"
+        :aria-valuemax="total"
+        @pointerdown="onScrubDown"
+        @pointermove="onScrubMove"
+        @pointerup="onScrubUp"
+        @pointercancel="onScrubUp"
+      >
+        <div class="reader__track"><i :style="{ transform: `scaleX(${progress})` }" /></div>
+        <span class="reader__thumb" :style="{ left: `${progress * 100}%` }" />
+      </div>
     </div>
   </main>
 </template>
@@ -56,6 +69,7 @@ const sutraId = route.params.sutraId as string
 const volNum = parseInt(route.params.volumeId as string, 10) || 1
 
 const frame = ref<HTMLIFrameElement | null>(null)
+const barEl = ref<HTMLElement | null>(null)
 const ready = ref(false)
 const panelShown = ref(false)
 const chapters = ref<{ value: number; label: string }[]>([])
@@ -87,14 +101,19 @@ const curChapterValue = computed(() => {
 })
 
 // Reading view: hide the editor panel, export/preview, and the printer's own
-// pager. 設定 toggles the panel back for font/theme.
+// pager. Also centre every glyph on the column axis so the body reads as an
+// even 上下左右 grid instead of hugging the 注音 to one side. 設定 restores
+// the panel for font/theme.
 const READER_CSS = `
   #btn-download, #btn-preview, #btn-print, #preview, #dl-status { display: none !important; }
   body.app-read #panel { display: none !important; }
   body.app-read .pager { display: none !important; }
   body.app-read { overflow: hidden !important; height: 100vh !important; }
   body.app-read #view { height: 100vh !important; }
-  body.app-read #view, body.app-read .stage { touch-action: none; user-select: none; }
+  body.app-read #view, body.app-read .stage { user-select: none; }
+  body.app-read .cell { justify-content: center !important; }
+  body.app-read .cell .base { text-align: center !important; }
+  body.app-read .zfont .cell .punc { transform: none !important; margin: 0 auto !important; }
 `
 
 function idoc(): Document | null {
@@ -122,168 +141,40 @@ function jumpChapter(value: string) {
   iwin()?.__readerGoto?.(parseInt(value, 10) || 0)
 }
 
-/* ───────────────────────── Corner-peel page turn ─────────────────────────
-   Dragging the bottom corner lifts the sheet like paper: the current page is
-   cloned on top, the next page renders underneath, and a folded flap follows
-   the finger. Release past the midpoint completes the turn; short drags snap
-   back. Two-page spreads (wide screens) fall back to a simple flip. */
-let peelInstalled = false
-function installPeel() {
+// Tap to turn: left half = next (後一頁), right half = prev (前一頁) — matches
+// 右翻 vertical reading. Works the same on phone (single) and desktop (spread).
+let tapInstalled = false
+function installTap() {
   const doc = idoc()
-  if (!doc || peelInstalled) return
-  peelInstalled = true
-  const paper = getComputedStyle(doc.documentElement).getPropertyValue('--paper').trim() || '#f3ecd8'
-
-  let dir: 'next' | 'prev' | null = null
-  let dragging = false
-  let sx = 0
-  let sy = 0
-  let W = 0
-  let H = 0
-  let left = 0
-  let top = 0
-  let cx = 0
-  let wrap: HTMLElement | null = null
-  let clone: HTMLElement | null = null
-  let flap: HTMLElement | null = null
-  let busy = false
-
-  const canGo = (d: 'next' | 'prev') => (d === 'next' ? cur.value < total.value - 1 : cur.value > 0)
-
-  function fold(fx: number, fy: number) {
-    fx = Math.max(0, Math.min(W, fx))
-    fy = Math.max(0, Math.min(H, fy))
-    const dx = fx - cx
-    const dy = fy - H
-    const mx = (fx + cx) / 2
-    const my = (fy + H) / 2
-    const px = -dy
-    const py = dx
-    const B = Math.abs(py) > 1e-3 ? { x: mx + ((H - my) / py) * px, y: H } : { x: cx, y: H }
-    const S = Math.abs(px) > 1e-3 ? { x: cx, y: my + ((cx - mx) / px) * py } : { x: cx, y: 0 }
-    B.x = Math.max(0, Math.min(W, B.x))
-    S.y = Math.max(0, Math.min(H, S.y))
-    return { B, S, fx, fy }
-  }
-
-  function paint(fx: number, fy: number) {
-    if (!clone || !flap) return
-    const { B, S } = fold(fx, fy)
-    if (dir === 'next') {
-      clone.style.clipPath = `polygon(0 0, ${W}px 0, ${W}px ${S.y}px, ${B.x}px ${H}px, 0 ${H}px)`
-    } else {
-      clone.style.clipPath = `polygon(0 0, ${W}px 0, ${W}px ${H}px, ${B.x}px ${H}px, 0 ${S.y}px)`
-    }
-    flap.style.clipPath = `polygon(${S.x}px ${S.y}px, ${fx}px ${fy}px, ${B.x}px ${H}px)`
-    const ang = dir === 'next' ? 135 : 225
-    flap.style.background = `linear-gradient(${ang}deg, rgba(0,0,0,.16), ${paper} 42%, rgba(255,255,255,.4))`
-  }
-
-  function begin(d: 'next' | 'prev') {
-    const sheet = doc!.getElementById('frameR')
-    if (!sheet) return false
-    const r = sheet.getBoundingClientRect()
-    W = r.width
-    H = r.height
-    left = r.left
-    top = r.top
-    cx = d === 'next' ? W : 0
-    wrap = doc!.createElement('div')
-    wrap.style.cssText = `position:fixed;left:${left}px;top:${top}px;width:${W}px;height:${H}px;z-index:9999;pointer-events:none;`
-    clone = sheet.cloneNode(true) as HTMLElement
-    clone.style.cssText += ';position:absolute;left:0;top:0;width:100%;height:100%;margin:0;'
-    flap = doc!.createElement('div')
-    flap.style.cssText =
-      'position:absolute;left:0;top:0;width:100%;height:100%;filter:drop-shadow(0 4px 8px rgba(0,0,0,.4));'
-    wrap.appendChild(clone)
-    wrap.appendChild(flap)
-    doc!.body.appendChild(wrap)
-    iwin()?.__readerFlip?.(d) // render the destination page underneath
-    paint(cx, H)
-    return true
-  }
-
-  function teardown() {
-    wrap?.remove()
-    wrap = clone = flap = null
-    dir = null
-    dragging = false
-  }
-
-  function settle(commit: boolean) {
-    if (!clone || !flap) {
-      teardown()
-      return
-    }
-    busy = true
-    if (commit) {
-      // Fade the lifted sheet away, revealing the destination underneath.
-      ;(clone.style.transition = 'opacity .18s ease'), (flap.style.transition = 'opacity .18s ease')
-      clone.style.opacity = '0'
-      flap.style.opacity = '0'
-      setTimeout(() => {
-        teardown()
-        busy = false
-      }, 190)
-    } else {
-      // Unfold back to the corner, then restore the original page.
-      const startX = lastX
-      const startY = lastY
-      const t0 = performance.now()
-      const step = (t: number) => {
-        const k = Math.min(1, (t - t0) / 200)
-        paint(startX + (cx - startX) * k, startY + (H - startY) * k)
-        if (k < 1) requestAnimationFrame(step)
-        else {
-          iwin()?.__readerFlip?.(dir === 'next' ? 'prev' : 'next')
-          teardown()
-          busy = false
-        }
-      }
-      requestAnimationFrame(step)
-    }
-  }
-
-  let lastX = 0
-  let lastY = 0
-
-  doc.addEventListener(
-    'pointerdown',
-    (e: PointerEvent) => {
-      if (busy || panelShown.value || twopage.value) return
-      if (!doc!.getElementById('frameR')) return
-      sx = e.clientX
-      sy = e.clientY
-      dir = null
-      dragging = false
-    },
-    { passive: true },
-  )
-  doc.addEventListener('pointermove', (e: PointerEvent) => {
-    if (busy || panelShown.value || twopage.value) return
-    const dx = e.clientX - sx
-    const dy = e.clientY - sy
-    if (!dragging) {
-      if (Math.abs(dx) < 12 || Math.abs(dx) < Math.abs(dy)) return
-      const d = dx < 0 ? 'next' : 'prev'
-      if (!canGo(d) || !begin(d)) {
-        dir = null
-        return
-      }
-      dragging = true
-    }
-    e.preventDefault()
-    lastX = e.clientX - left
-    lastY = e.clientY - top
-    paint(lastX, lastY)
+  if (!doc || tapInstalled) return
+  tapInstalled = true
+  doc.addEventListener('click', (e: MouseEvent) => {
+    if (panelShown.value) return
+    const w = doc.defaultView?.innerWidth || window.innerWidth
+    iwin()?.__readerFlip?.(e.clientX < w / 2 ? 'next' : 'prev')
   })
-  const end = () => {
-    if (!dragging) return
-    const travelled = Math.abs(lastX - cx)
-    settle(travelled > W * 0.42)
-  }
-  doc.addEventListener('pointerup', end)
-  doc.addEventListener('pointercancel', end)
+}
+
+// Draggable progress bar → jump to any page.
+let scrubbing = false
+function scrubTo(clientX: number) {
+  const bar = barEl.value
+  if (!bar || total.value <= 1) return
+  const r = bar.getBoundingClientRect()
+  const f = Math.max(0, Math.min(1, (clientX - r.left) / r.width))
+  iwin()?.__readerGoto?.(Math.round(f * (total.value - 1)))
+}
+function onScrubDown(e: PointerEvent) {
+  e.preventDefault()
+  ;(e.target as HTMLElement).setPointerCapture?.(e.pointerId)
+  scrubbing = true
+  scrubTo(e.clientX)
+}
+function onScrubMove(e: PointerEvent) {
+  if (scrubbing) scrubTo(e.clientX)
+}
+function onScrubUp() {
+  scrubbing = false
 }
 
 /**
@@ -350,7 +241,7 @@ function drive(attempt = 0): void {
     if (sutraId !== 'avatamsaka' && meta && chs.length > 1 && chs.length === meta.totalVolumes && volNum > 1) {
       win.__readerGoto?.(chs[volNum - 1]?.value ?? 0)
     }
-    installPeel()
+    installTap()
     ready.value = true
     return
   }
@@ -444,18 +335,18 @@ function onLoad() {
   color: #1a1a1a;
 }
 
-/* — Reading HUD (progress only) ————————————————— */
+/* — Reading HUD (progress + scrub) ————————————————— */
 .reader__hud {
   position: absolute;
   left: 0;
   right: 0;
   bottom: 0;
   z-index: 6;
-  padding: var(--s3) var(--s5) calc(var(--safe-b) + var(--s3));
+  padding: var(--s2) var(--s5) calc(var(--safe-b) + var(--s2));
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: var(--s2);
+  gap: 2px;
   pointer-events: none;
   background: linear-gradient(to top, rgba(8, 9, 12, 0.66), transparent);
 }
@@ -465,18 +356,40 @@ function onLoad() {
   color: #d3d6dc;
   font-variant-numeric: tabular-nums;
 }
-.reader__progress {
+/* Generous touch target around the 3px rail */
+.reader__scrub {
+  position: relative;
+  width: 100%;
+  height: 22px;
+  display: flex;
+  align-items: center;
+  pointer-events: auto;
+  cursor: pointer;
+  touch-action: none;
+}
+.reader__track {
   width: 100%;
   height: 3px;
   border-radius: var(--r-full);
-  background: rgba(255, 255, 255, 0.14);
+  background: rgba(255, 255, 255, 0.16);
   overflow: hidden;
 }
-.reader__progress i {
+.reader__track i {
   display: block;
   height: 100%;
   transform-origin: left;
   background: linear-gradient(90deg, #c9a24e, #e8ce8e);
-  transition: transform var(--base) var(--ease-out);
+  transition: transform var(--fast) var(--ease-out);
+}
+.reader__thumb {
+  position: absolute;
+  top: 50%;
+  width: 12px;
+  height: 12px;
+  margin-left: -6px;
+  border-radius: 50%;
+  background: #f0d79b;
+  transform: translateY(-50%);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.5);
 }
 </style>
