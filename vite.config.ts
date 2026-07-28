@@ -68,6 +68,9 @@ export default defineConfig({
       },
       workbox: {
         globPatterns: ['**/*.{js,css,html,woff2,png,svg}'],
+        // The bundled 印經坊 reader is ~4MB; don't precache it into the SW.
+        globIgnores: ['**/yinjingfang/**'],
+        maximumFileSizeToCacheInBytes: 3 * 1024 * 1024,
         // Sutra volumes come from Firebase Storage — cache them on first read
         runtimeCaching: [
           {
