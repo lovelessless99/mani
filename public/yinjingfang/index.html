@@ -1133,6 +1133,8 @@ function pageLabel(i){
 }
 function updateInd(){
   const total=PAGES.length;
+  // Bridge for the embedding app (reading position, chapters, progress).
+  if(window.__onReaderRender){try{window.__onReaderRender(CUR,total,CHAPTERS,TWOPAGE);}catch(e){}}
   if(TWOPAGE && total>1){
     const [a,b]=pairOf(CUR);
     $('page-ind').textContent = (b==null)
@@ -1204,6 +1206,13 @@ $('in-chapter').onchange=e=>{ let i=Math.max(0,Math.min(PAGES.length-1, parseInt
 $('btn-run').onclick=()=>{ for(const k in overrides)delete overrides[k]; CUR=0; layout(); };
 $('btn-next').onclick=()=>flip('next');
 $('btn-prev').onclick=()=>flip('prev');
+
+// Bridge: let the embedding app drive paging / single-page for mobile.
+window.__readerFlip=function(d){ flip(d); };
+window.__readerGoto=function(i){ i=Math.max(0,Math.min(PAGES.length-1,i|0));
+  CUR=(TWOPAGE&&PAGES.length>1)?pairOf(i)[0]:i; renderPage(); };
+window.__readerSingle=function(single){ const c=$('opt-twopage'); const want=!single;
+  if(c.checked!==want){ c.checked=want; c.dispatchEvent(new Event('change')); } };
 
 const PXMM=96/25.4;
 function setPrintPage(mm){
