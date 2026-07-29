@@ -67,6 +67,18 @@
       </div>
     </GlassCard>
 
+    <!-- 印刷排版經文輸出 -->
+    <GlassCard class="setting setting--tight" clickable @click="router.push('/print')">
+      <div class="row">
+        <AppIcon name="book" :size="20" class="row__icon" />
+        <div class="row__main">
+          <h2 class="row__title">印刷排版 · 經文輸出</h2>
+          <p class="row__desc">直排 · 逐字注音 · 自訂主題背景,匯出 PDF / 列印</p>
+        </div>
+        <AppIcon name="chevronRight" :size="18" class="row__icon" />
+      </div>
+    </GlassCard>
+
     <!-- Achievements -->
     <GlassCard class="setting setting--tight" clickable @click="router.push('/achievements')">
       <div class="row">
@@ -199,7 +211,6 @@ async function signOut() {
 }
 
 const planned = [
-  { icon: 'book', title: '印刷排版', desc: '直排 · 注音 · 自訂背景,匯出 PDF' },
   { icon: 'sparkle', title: '聽法筆記', desc: 'YouTube 講經連結與每日打卡' },
   { icon: 'dots', title: '設定', desc: '字級 · 主題 · 資料匯出' },
 ]

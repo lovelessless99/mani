@@ -30,9 +30,11 @@ import AppIcon from 'src/components/ui/AppIcon.vue'
 
 const route = useRoute()
 
-// The reader is fully immersive — its own pager sits at the bottom, so the
-// floating dock would only cover the page-turn controls.
-const immersive = computed(() => route.path.startsWith('/reader'))
+// The reader and the print tool are fully immersive — their own controls sit
+// at the edges, so the floating dock would only get in the way.
+const immersive = computed(
+  () => route.path.startsWith('/reader') || route.path.startsWith('/print'),
+)
 
 const tabs = [
   { to: '/', icon: 'home', label: '今日' },
