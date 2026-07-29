@@ -77,6 +77,7 @@ import AppSpinner from 'src/components/ui/AppSpinner.vue'
 import { getSutraMeta } from 'src/services/sutraService'
 import { useReadingStore } from 'src/stores/readingStore'
 import readerLibrary from 'src/data/meta/reader-library.json'
+import puxian from 'src/data/sutras/puxian-xingyuan.json'
 
 interface ReaderBook {
   id: string
@@ -105,7 +106,11 @@ const resumePage = (() => {
   const p = parseInt(String(route.query.p ?? ''), 10)
   return Number.isFinite(p) ? p : null
 })()
+// 普賢行願品 is not one of 印經坊's presets (it's from the 40-卷 華嚴); we feed
+// its verified CBETA text straight into the typesetter as 華嚴 第九本.
+const isPuxian = sutraId === 'avatamsaka' && rawVolume === 'b9'
 const volumeLabel = (() => {
+  if (isPuxian) return '普賢行願品'
   const cm = /^c(\d+)$/.exec(rawVolume)
   if (cm) {
     const title = (readerLibrary as ReaderSutra[]).find((s) => s.id === sutraId)?.chapters?.[+cm[1]]
@@ -311,27 +316,46 @@ function drive(attempt = 0): void {
   }
   const doc = idoc()
   const win = iwin()
-  const preset = el<HTMLSelectElement>('in-preset')
   const body = el<HTMLTextAreaElement>('in-body')
-  const name = presetName()
-  if (!doc || !win || !preset || !body || !name) {
-    retry()
-    return
-  }
-  if (![...preset.options].some((o) => o.value === name)) {
+  if (!doc || !win || !body) {
     retry()
     return
   }
 
-  // Clear, then select the sutra so the library reloads its text into the box.
-  if (preset.value !== name || body.value.trim().length < 20) {
-    body.value = ''
-    preset.value = name
-    fire(preset)
-  }
-  if (body.value.trim().length < 20) {
-    retry()
-    return
+  if (isPuxian) {
+    // Feed 普賢行願品's own text into the typesetter (no matching preset).
+    const titleEl = el<HTMLInputElement>('in-title')
+    const authorEl = el<HTMLInputElement>('in-attrib')
+    if (!titleEl || !authorEl) {
+      retry()
+      return
+    }
+    const wanted = `# ${puxian.heading}\n${puxian.body}`
+    if (body.value !== wanted) {
+      titleEl.value = puxian.title
+      fire(titleEl, 'input')
+      authorEl.value = puxian.author
+      fire(authorEl, 'input')
+      body.value = wanted
+      fire(body, 'input')
+    }
+  } else {
+    const preset = el<HTMLSelectElement>('in-preset')
+    const name = presetName()
+    if (!preset || !name || ![...preset.options].some((o) => o.value === name)) {
+      retry()
+      return
+    }
+    // Clear, then select the sutra so the library reloads its text into the box.
+    if (preset.value !== name || body.value.trim().length < 20) {
+      body.value = ''
+      preset.value = name
+      fire(preset)
+    }
+    if (body.value.trim().length < 20) {
+      retry()
+      return
+    }
   }
 
   // Keep the reading position / chapters / progress in sync with the printer.

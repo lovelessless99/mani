@@ -1212,7 +1212,10 @@ window.__readerFlip=function(d){ flip(d); };
 window.__readerGoto=function(i){ i=Math.max(0,Math.min(PAGES.length-1,i|0));
   CUR=(TWOPAGE&&PAGES.length>1)?pairOf(i)[0]:i; renderPage(); };
 window.__readerSingle=function(single){ const c=$('opt-twopage'); const want=!single;
-  if(c.checked!==want){ c.checked=want; c.dispatchEvent(new Event('change')); } };
+  if(c.checked!==want){ c.checked=want; c.dispatchEvent(new Event('change')); }
+  // Single-page (phone): turn off 奇偶頁鏡像 so every leaf faces the same side.
+  const sp=$('opt-spread'); const wantSp=!single;
+  if(sp.checked!==wantSp){ sp.checked=wantSp; sp.dispatchEvent(new Event('change')); } };
 
 const PXMM=96/25.4;
 function setPrintPage(mm){
