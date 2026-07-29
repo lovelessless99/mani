@@ -43,9 +43,16 @@
     <AppSheet
       v-model="showVolumeSheet"
       :title="selectedSutraMeta?.titleZh"
-      :subtitle="`共 ${selectedSutraMeta?.totalVolumes ?? 0} 卷 · 點選開始誦讀`"
+      :subtitle="sheetSubtitle"
     >
-      <div class="vol-grid">
+      <!-- 華嚴 reads as 8 本; everything else as its 卷 grid -->
+      <div v-if="bookList.length" class="book-list">
+        <button v-for="bk in bookList" :key="bk.id" class="book" type="button" @click="goToReader(bk.id)">
+          <span class="book__label">{{ bk.label }}</span>
+          <AppIcon name="chevronRight" :size="16" class="book__go" />
+        </button>
+      </div>
+      <div v-else class="vol-grid">
         <button
           v-for="vol in volumeList"
           :key="vol.id"
@@ -96,6 +103,14 @@ const RING_COLORS = [
 const ringColor = (i: number) => RING_COLORS[i % RING_COLORS.length]
 
 const selectedSutraMeta = computed(() => getSutraMeta(selectedSutraId.value))
+
+// 華嚴 offers 8 本 for reading; others show their 卷 grid.
+const bookList = computed(() => selectedSutraMeta.value?.readingBooks ?? [])
+const sheetSubtitle = computed(() => {
+  const m = selectedSutraMeta.value
+  if (!m) return ''
+  return bookList.value.length ? `分 ${bookList.value.length} 本 · 點選開始誦讀` : `共 ${m.totalVolumes} 卷 · 點選開始誦讀`
+})
 
 const volumeList = computed(() => {
   const meta = selectedSutraMeta.value
@@ -220,6 +235,41 @@ onMounted(() => {
   font-size: var(--text-micro);
   color: var(--text-faint);
   letter-spacing: 0.08em;
+}
+
+/* — Book list (華嚴 8 本) ————————————————————— */
+.book-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s2);
+  padding-bottom: var(--s2);
+}
+.book {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--s4);
+  border-radius: var(--r-md);
+  border: 1px solid var(--hairline);
+  background: rgba(255, 255, 255, 0.03);
+  transition:
+    background var(--fast) var(--ease),
+    transform var(--fast) var(--ease);
+}
+.book:hover {
+  background: var(--glass-2);
+}
+.book:active {
+  transform: scale(0.99);
+}
+.book__label {
+  font-family: var(--font-serif);
+  font-size: var(--text-body);
+  letter-spacing: 0.08em;
+  color: var(--text);
+}
+.book__go {
+  color: var(--text-faint);
 }
 
 /* — Volume grid ————————————————————————————

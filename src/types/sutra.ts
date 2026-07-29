@@ -5,6 +5,9 @@ export interface SutraIndexEntry {
   totalVolumes: number    // 80
   storageType: 'bundled' | 'remote'
   description: string
+  // Optional reading split for the library — 華嚴經 reads as 8 本 even though
+  // it still counts as 80 卷 in 功課. Each opens a distinct 印經坊 本.
+  readingBooks?: { id: string; label: string }[]
 }
 
 export interface ZhuyinChar {

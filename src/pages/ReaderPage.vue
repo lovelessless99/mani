@@ -23,7 +23,14 @@
       </button>
     </div>
 
-    <div v-if="!ready" class="reader__loading"><AppSpinner :size="34" /></div>
+    <div v-if="!ready" class="reader__loading">
+      <div class="reader__loadcard">
+        <AppSpinner :size="30" />
+        <p class="reader__loadtitle">載入經文中…</p>
+        <div class="reader__loadbar"><i :style="{ width: `${loadPct}%` }" /></div>
+        <span class="reader__loadpct tnum">{{ Math.round(loadPct) }}%</span>
+      </div>
+    </div>
 
     <!-- 印經坊 本尊:載入原站,驅動至對應經文 -->
     <iframe
@@ -57,7 +64,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import AppIcon from 'src/components/ui/AppIcon.vue'
 import AppSpinner from 'src/components/ui/AppSpinner.vue'
@@ -66,7 +73,27 @@ import { getSutraMeta } from 'src/services/sutraService'
 const route = useRoute()
 const router = useRouter()
 const sutraId = route.params.sutraId as string
-const volNum = parseInt(route.params.volumeId as string, 10) || 1
+const rawVolume = String(route.params.volumeId ?? '')
+const volNum = parseInt(rawVolume, 10) || 1
+
+// 印經坊 華嚴 chapters per 本 (measured; 卷-ordered, 104 total). Lets a 卷 link
+// from 功課 land near that 卷 inside the right 本.
+const HUA_COUNTS = [13, 18, 11, 21, 14, 9, 9, 9]
+const HUA_STARTS = [0, 13, 31, 42, 63, 77, 86, 95]
+const HUA_TOTAL = 104
+function huaTarget(): { ben: number; localChapter: number | null } {
+  const m = /^b(\d+)$/.exec(rawVolume)
+  if (m) return { ben: Math.min(8, Math.max(1, parseInt(m[1], 10))), localChapter: null }
+  const g = Math.min(HUA_TOTAL - 1, Math.max(0, Math.round(((volNum - 0.5) / 80) * HUA_TOTAL)))
+  let b = 7
+  for (let i = 0; i < 8; i++) {
+    if (g < HUA_STARTS[i] + HUA_COUNTS[i]) {
+      b = i
+      break
+    }
+  }
+  return { ben: b + 1, localChapter: g - HUA_STARTS[b] }
+}
 
 const frame = ref<HTMLIFrameElement | null>(null)
 const barEl = ref<HTMLElement | null>(null)
@@ -77,6 +104,24 @@ const cur = ref(0)
 const total = ref(1)
 const twopage = ref(false)
 
+// Loading progress. The 4MB 印經坊 + gzip decompression give no byte events,
+// so we ease toward 90% while it loads and snap to 100% when the page renders.
+const loadPct = ref(0)
+let loadTimer: ReturnType<typeof setInterval> | undefined
+function startLoadProgress() {
+  loadPct.value = 6
+  clearInterval(loadTimer)
+  loadTimer = setInterval(() => {
+    loadPct.value = Math.min(90, loadPct.value + Math.max(0.4, (90 - loadPct.value) * 0.05))
+  }, 110)
+}
+function finishLoadProgress() {
+  clearInterval(loadTimer)
+  loadPct.value = 100
+}
+onMounted(startLoadProgress)
+onBeforeUnmount(() => clearInterval(loadTimer))
+
 // App sutra → 印經坊 built-in preset (its own CBETA text/typesetting).
 // 華嚴經 is 80 卷 split into eight "本" (華嚴經1..8) — pick the 本 by volume.
 const BASE_PRESET: Record<string, string> = {
@@ -85,9 +130,10 @@ const BASE_PRESET: Record<string, string> = {
   ksitigarbha: '地藏經',
   shurangama: '楞嚴經',
   lotus: '法華經',
+  'medicine-buddha': '藥師經',
 }
 function presetName(): string {
-  if (sutraId === 'avatamsaka') return `華嚴經${Math.min(8, Math.max(1, Math.ceil(volNum / 10)))}`
+  if (sutraId === 'avatamsaka') return `華嚴經${huaTarget().ben}`
   return BASE_PRESET[sutraId] ?? ''
 }
 
@@ -234,14 +280,19 @@ function drive(attempt = 0): void {
       doc.head.appendChild(style)
     }
     doc.body.classList.add('app-read')
-    // Open at the chosen volume's chapter when the mapping is 1:1 (e.g. 地藏經
-    // 13 品 = 13 卷); 華嚴 already opens the right 本 via the preset above.
+    // Open at the chosen volume's chapter. 華嚴: 本 links open at the start,
+    // 卷 links (from 功課) land on the nearest chapter inside the right 本.
+    // Others map 1:1 when 卷 count == 品 count (e.g. 地藏經 13 品 = 13 卷).
     const meta = getSutraMeta(sutraId)
     const chs = chapters.value
-    if (sutraId !== 'avatamsaka' && meta && chs.length > 1 && chs.length === meta.totalVolumes && volNum > 1) {
+    if (sutraId === 'avatamsaka') {
+      const lc = huaTarget().localChapter
+      if (lc != null && chs.length > lc) win.__readerGoto?.(chs[lc].value)
+    } else if (meta && chs.length > 1 && chs.length === meta.totalVolumes && volNum > 1) {
       win.__readerGoto?.(chs[volNum - 1]?.value ?? 0)
     }
     installTap()
+    finishLoadProgress()
     ready.value = true
     return
   }
@@ -252,6 +303,7 @@ function onLoad() {
   ready.value = false
   panelShown.value = false
   chapters.value = []
+  startLoadProgress()
   drive()
 }
 </script>
@@ -279,8 +331,41 @@ function onLoad() {
 .reader__loading {
   position: absolute;
   inset: 0;
+  z-index: 8;
   display: grid;
   place-items: center;
+  background: #0f1115;
+}
+.reader__loadcard {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--s3);
+  width: min(78vw, 18rem);
+}
+.reader__loadtitle {
+  font-size: var(--text-caption);
+  letter-spacing: 0.14em;
+  color: var(--text-dim);
+}
+.reader__loadbar {
+  width: 100%;
+  height: 4px;
+  border-radius: var(--r-full);
+  background: rgba(255, 255, 255, 0.12);
+  overflow: hidden;
+}
+.reader__loadbar i {
+  display: block;
+  height: 100%;
+  border-radius: var(--r-full);
+  background: linear-gradient(90deg, #c9a24e, #e8ce8e);
+  transition: width 0.2s var(--ease-out);
+}
+.reader__loadpct {
+  font-size: var(--text-micro);
+  letter-spacing: 0.08em;
+  color: var(--text-faint);
 }
 
 .reader__chip {

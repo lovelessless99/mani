@@ -21,7 +21,17 @@
     "titleEn": "Avatamsaka Sutra",
     "totalVolumes": 80,
     "storageType": "remote",
-    "description": "佛教重要經典，共八十卷，對應八十八佛與八十八星座。"
+    "description": "佛教重要經典，共八十卷，對應八十八佛與八十八星座。",
+    "readingBooks": [
+      { "id": "b1", "label": "第一本" },
+      { "id": "b2", "label": "第二本" },
+      { "id": "b3", "label": "第三本" },
+      { "id": "b4", "label": "第四本" },
+      { "id": "b5", "label": "第五本" },
+      { "id": "b6", "label": "第六本" },
+      { "id": "b7", "label": "第七本" },
+      { "id": "b8", "label": "第八本" }
+    ]
   },
   {
     "id": "ksitigarbha",
@@ -46,5 +56,13 @@
     "totalVolumes": 7,
     "storageType": "remote",
     "description": "大乘佛教重要經典，共七卷二十八品。"
+  },
+  {
+    "id": "medicine-buddha",
+    "titleZh": "藥師琉璃光如來本願功德經",
+    "titleEn": "Medicine Buddha Sutra",
+    "totalVolumes": 1,
+    "storageType": "remote",
+    "description": "藥師如來十二大願，消災延壽、拔除病苦的重要經典，一卷。"
   }
 ]
