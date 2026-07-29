@@ -40,9 +40,10 @@ export default defineConfig({
     // as a component and silently renders nothing.
     vue({ ...templateCompilerOptions }),
     VitePWA({
-      // 'prompt' so a new deploy surfaces the 立即更新 refresh button
-      // (PwaPrompts) instead of silently swapping under the user.
-      registerType: 'prompt',
+      // autoUpdate so a new SW activates immediately (skipWaiting): critical
+      // fixes — like the /yinjingfang/ navigation denylist below — must reach
+      // users without waiting on a manual tap, or a bad SW strands them.
+      registerType: 'autoUpdate',
       // Resolve the virtual:pwa-register module in `vite` dev too, so the
       // install/update composable does not 500 the dev server.
       devOptions: { enabled: true, type: 'module' },
