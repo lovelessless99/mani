@@ -1,5 +1,6 @@
 <template>
   <main class="page">
+    <CardDrawBurst v-if="drawBursting" @done="drawBursting = false" />
     <header>
       <h1 class="page-title">功課</h1>
       <p class="page-sub">逐品逐卷計數,不必整部才算一遍</p>
@@ -270,6 +271,7 @@ import AppSpinner from 'src/components/ui/AppSpinner.vue'
 import AppSheet from 'src/components/ui/AppSheet.vue'
 import FillBlankDrill from 'src/components/practice/FillBlankDrill.vue'
 import SutraCompleteCeremony from 'src/components/practice/SutraCompleteCeremony.vue'
+import CardDrawBurst from 'src/components/practice/CardDrawBurst.vue'
 import UnlockCeremony from 'src/components/gems/UnlockCeremony.vue'
 import { useProgressStore } from 'src/stores/progressStore'
 import { useGemStore } from 'src/stores/gemStore'
@@ -323,8 +325,11 @@ const allDailyDone = computed(
 // Only animate the deal when the deck is turned over in this session, not
 // every time the page loads on an already-drawn day.
 const justDrew = ref(false)
+const drawBursting = ref(false)
 async function drawDeck() {
   justDrew.value = true
+  drawBursting.value = true
+  chime.strike(0.7)
   await dailyStore.markDrawn()
 }
 
@@ -954,13 +959,45 @@ onMounted(async () => {
   background: rgba(134, 239, 172, 0.06);
   border-color: rgba(134, 239, 172, 0.32);
 }
-.tcard--reveal {
-  animation: card-deal 0.5s var(--ease-out) both;
+.tcard {
+  position: relative;
+  overflow: hidden;
 }
-@keyframes card-deal {
-  from {
+.tcard--reveal {
+  animation: card-flip 0.62s cubic-bezier(0.2, 0.75, 0.2, 1) both;
+  transform-origin: center;
+}
+@keyframes card-flip {
+  0% {
     opacity: 0;
-    transform: translateY(-36px) rotateX(35deg) scale(0.86);
+    transform: perspective(720px) rotateY(-92deg) translateY(-18px) scale(0.9);
+  }
+  55% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 1;
+    transform: perspective(720px) rotateY(0deg) translateY(0) scale(1);
+  }
+}
+/* Golden light sweeping across the freshly turned card */
+.tcard--reveal::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(
+    115deg,
+    transparent 32%,
+    rgba(255, 238, 184, 0.55) 50%,
+    transparent 68%
+  );
+  transform: translateX(-130%);
+  animation: card-sheen 0.7s ease 0.28s both;
+}
+@keyframes card-sheen {
+  to {
+    transform: translateX(130%);
   }
 }
 
