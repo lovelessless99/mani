@@ -204,7 +204,7 @@
     <!-- 背經: pick a sutra, then a range -->
     <AppSheet
       v-model="pickerOpen"
-      :title="rangeSutra ? rangeMeta?.titleZh : '背經'"
+      :title="rangeSutra ? rangeTitle : '背經'"
       :subtitle="rangeSutra ? '選擇背誦範圍' : '選擇要背誦的經典'"
     >
       <template v-if="!rangeSutra">
@@ -295,6 +295,7 @@ import { useChime } from 'src/composables/useChime'
 import { useDailyTask, type DailyItem } from 'src/composables/useDailyTask'
 import { useRank } from 'src/composables/useRank'
 import chaptersData from 'src/data/meta/sutra-chapters.json'
+import drillIndexData from 'src/data/meta/drill-index.json'
 
 type Mode = 'recite' | 'memorize'
 
@@ -310,6 +311,16 @@ interface SutraChapters {
 }
 
 const CHAPTERS = chaptersData as unknown as Record<string, SutraChapters>
+
+// Reading-library sutras whose text comes from 印經坊 (普門品, 阿彌陀經, 法華…).
+// Metadata is eager (tiny); the paragraphs are lazy-loaded on drill start.
+interface DrillIndexEntry {
+  title: string
+  unit: string
+  items: { id: string; name: string }[]
+}
+const DRILL_INDEX = drillIndexData as unknown as Record<string, DrillIndexEntry>
+const isDrillLib = (sutraId: string) => sutraId in DRILL_INDEX
 
 const GEM_CAP = 88
 
@@ -408,26 +419,36 @@ const drillChapterId = ref('')
 // The drill runs against drillSutraId, which is not necessarily the sutra
 // whose chapter sheet is open — so its title comes from here, not activeSutra.
 const drillTitle = computed(
-  () => getAllSutras().find((s) => s.id === drillSutraId.value)?.titleZh ?? ''
+  () => getAllSutras().find((s) => s.id === drillSutraId.value)?.titleZh ?? DRILL_INDEX[drillSutraId.value]?.title ?? ''
 )
 
 const pickerOpen = ref(false)
 // Which sutra's ranges are being shown; empty means the sutra list.
 const rangeSutra = ref('')
-const rangeMeta = computed(() => getSutraMeta(rangeSutra.value))
-const rangeItems = computed(() => CHAPTERS[rangeSutra.value]?.items ?? [])
+const rangeTitle = computed(
+  () => getSutraMeta(rangeSutra.value)?.titleZh ?? DRILL_INDEX[rangeSutra.value]?.title ?? ''
+)
+const rangeItems = computed(
+  () => CHAPTERS[rangeSutra.value]?.items ?? DRILL_INDEX[rangeSutra.value]?.items ?? []
+)
 
-/** Texts bundled with the app, and so available to drill against. */
-const drillable = computed(() =>
-  getAllSutras()
+/** Every sutra with text to drill against: app-bundled ones + 印經坊 library. */
+const drillable = computed(() => [
+  ...getAllSutras()
     .filter((s) => s.storageType === 'bundled')
     .map((s) => ({
       id: s.id,
       titleZh: s.titleZh,
       unit: CHAPTERS[s.id]?.unit ?? '卷',
       count: CHAPTERS[s.id]?.items.length ?? 0,
-    }))
-)
+    })),
+  ...Object.entries(DRILL_INDEX).map(([id, d]) => ({
+    id,
+    titleZh: d.title,
+    unit: d.unit,
+    count: d.items.length,
+  })),
+])
 
 function openRange(sutraId: string) {
   rangeSutra.value = sutraId
@@ -436,6 +457,35 @@ function openRange(sutraId: string) {
 /** chapterId 'all' loads every chapter; otherwise just that one. */
 async function startDrill(chapterId: string) {
   const sutraId = rangeSutra.value
+
+  // 印經坊-sourced sutras: lazy-load the text and build sections directly.
+  if (isDrillLib(sutraId)) {
+    const d = DRILL_INDEX[sutraId]
+    const items = chapterId === 'all' ? d.items : d.items.filter((c) => c.id === chapterId)
+    if (!items.length) return
+    try {
+      const texts = (await import('src/data/meta/drill-library.json')).default as Record<
+        string,
+        Record<string, string[]>
+      >
+      drillSections.value = items.map((c) => ({
+        id: c.id,
+        name: c.name,
+        gist: '',
+        paragraphs: texts[sutraId]?.[c.id] ?? [],
+      }))
+      drillSource.value = 'CBETA · 印經坊'
+      drillSutraId.value = sutraId
+      drillChapterId.value = chapterId === 'all' ? d.items[0].id : chapterId
+      pickerOpen.value = false
+      rangeSutra.value = ''
+      drillOpen.value = true
+    } catch (e) {
+      toast.error(describeError(e))
+    }
+    return
+  }
+
   const meta = CHAPTERS[sutraId]
   if (!meta) return
   const items = chapterId === 'all' ? meta.items : meta.items.filter((c) => c.id === chapterId)
@@ -473,6 +523,13 @@ async function startDrill(chapterId: string) {
  * of a chapter also earns its gem, the same as reciting it.
  */
 async function onDrillSolved(chapterId: string) {
+  // 印經坊-sourced sutras aren't in the 功課/gem system — just credit the streak.
+  if (isDrillLib(drillSutraId.value)) {
+    chime.strike(0.6)
+    await streakStore.touchToday()
+    checkMedals()
+    return
+  }
   const id = chapterId || drillChapterId.value || CHAPTERS[drillSutraId.value]?.items[0]?.id
   if (!id) return
   try {

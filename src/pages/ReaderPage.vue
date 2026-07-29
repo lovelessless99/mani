@@ -266,8 +266,8 @@ function jumpChapter(value: string) {
   iwin()?.__readerGoto?.(parseInt(value, 10) || 0)
 }
 
-// Tap to turn: left half = next (後一頁), right half = prev (前一頁) — matches
-// 右翻 vertical reading. Works the same on phone (single) and desktop (spread).
+// Tap to turn. Phone: right = 下一頁, left = 上一頁. Desktop (right-bound
+// spread, next leaf is to the left): the reverse — left = 下一頁, right = 上一頁.
 let tapInstalled = false
 function installTap() {
   const doc = idoc()
@@ -276,7 +276,10 @@ function installTap() {
   doc.addEventListener('click', (e: MouseEvent) => {
     if (panelShown.value) return
     const w = doc.defaultView?.innerWidth || window.innerWidth
-    iwin()?.__readerFlip?.(e.clientX < w / 2 ? 'next' : 'prev')
+    const leftHalf = e.clientX < w / 2
+    const phone = window.innerWidth < 768
+    const next = phone ? !leftHalf : leftHalf
+    iwin()?.__readerFlip?.(next ? 'next' : 'prev')
   })
 }
 
