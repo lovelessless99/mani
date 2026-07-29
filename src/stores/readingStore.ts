@@ -21,17 +21,23 @@ export interface ReadingMark {
   volumeLabel: string
   /** 0–1 down the text — the line, near enough */
   progress: number
+  /** Page index in the 印經坊 reader, so it resumes on the exact leaf */
+  page?: number
+  total?: number
   at: string // ISO timestamp
 }
 
 interface ReadingDoc {
   last?: ReadingMark
   dedicated?: ReadingMark
+  /** Every sutra keeps its own resume point, keyed by sutraId */
+  bySutra?: Record<string, ReadingMark>
 }
 
 export const useReadingStore = defineStore('reading', () => {
   const last = ref<ReadingMark | null>(null)
   const dedicated = ref<ReadingMark | null>(null)
+  const bySutra = ref<Record<string, ReadingMark>>({})
   const loaded = ref(false)
 
   async function load(): Promise<void> {
@@ -39,6 +45,7 @@ export const useReadingStore = defineStore('reading', () => {
     if (doc) {
       last.value = doc.last ?? null
       dedicated.value = doc.dedicated ?? null
+      bySutra.value = doc.bySutra ?? {}
     }
     loaded.value = true
   }
@@ -47,12 +54,20 @@ export const useReadingStore = defineStore('reading', () => {
     await setDocData(COL, ID, {
       ...(last.value ? { last: last.value } : {}),
       ...(dedicated.value ? { dedicated: dedicated.value } : {}),
+      bySutra: bySutra.value,
     })
   }
 
-  /** Record the current reading spot as the place to resume from. */
+  /** The saved resume point for one sutra, if any. */
+  function forSutra(sutraId: string): ReadingMark | null {
+    return bySutra.value[sutraId] ?? null
+  }
+
+  /** Record the current reading spot — both the global "last" and per-sutra. */
   async function mark(m: Omit<ReadingMark, 'at'>): Promise<void> {
-    last.value = { ...m, at: new Date().toISOString() }
+    const withTime = { ...m, at: new Date().toISOString() }
+    last.value = withTime
+    bySutra.value = { ...bySutra.value, [m.sutraId]: withTime }
     await persist()
   }
 
@@ -62,5 +77,5 @@ export const useReadingStore = defineStore('reading', () => {
     await persist()
   }
 
-  return { last, dedicated, loaded, load, mark, markDedicated }
+  return { last, dedicated, bySutra, loaded, load, forSutra, mark, markDedicated }
 })

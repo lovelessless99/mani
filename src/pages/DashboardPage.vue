@@ -158,7 +158,7 @@ function relDate(iso: string): string {
 
 function resume() {
   const m = reading.last
-  if (m) router.push(`/reader/${m.sutraId}/${m.volumeId}`)
+  if (m) router.push(`/reader/${m.sutraId}/${m.volumeId}?p=${m.page ?? 0}`)
 }
 
 onMounted(async () => {

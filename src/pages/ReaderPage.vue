@@ -64,17 +64,29 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import AppIcon from 'src/components/ui/AppIcon.vue'
 import AppSpinner from 'src/components/ui/AppSpinner.vue'
 import { getSutraMeta } from 'src/services/sutraService'
+import { useReadingStore } from 'src/stores/readingStore'
 
 const route = useRoute()
 const router = useRouter()
+const reading = useReadingStore()
 const sutraId = route.params.sutraId as string
 const rawVolume = String(route.params.volumeId ?? '')
 const volNum = parseInt(rawVolume, 10) || 1
+// ?p=N resumes on an exact leaf (used by the library's 繼續上次 buttons).
+const resumePage = (() => {
+  const p = parseInt(String(route.query.p ?? ''), 10)
+  return Number.isFinite(p) ? p : null
+})()
+const volumeLabel = (() => {
+  const m = /^b(\d+)$/.exec(rawVolume)
+  if (sutraId === 'avatamsaka') return m ? `第${m[1]}本` : `卷${volNum}`
+  return `第${volNum}卷`
+})()
 
 // 印經坊 華嚴 chapters per 本 (measured; 卷-ordered, 104 total). Lets a 卷 link
 // from 功課 land near that 卷 inside the right 本.
@@ -119,8 +131,33 @@ function finishLoadProgress() {
   clearInterval(loadTimer)
   loadPct.value = 100
 }
-onMounted(startLoadProgress)
-onBeforeUnmount(() => clearInterval(loadTimer))
+onMounted(() => {
+  startLoadProgress()
+  reading.load()
+})
+onBeforeUnmount(() => {
+  clearInterval(loadTimer)
+  clearTimeout(saveTimer)
+})
+
+// Remember where every sutra was left — save the current leaf (debounced) so
+// each 部 resumes on its own page, not just the most recent one.
+let saveTimer: ReturnType<typeof setTimeout> | undefined
+watch(cur, () => {
+  if (!ready.value) return
+  clearTimeout(saveTimer)
+  saveTimer = setTimeout(() => {
+    reading.mark({
+      sutraId,
+      sutraTitle: getSutraMeta(sutraId)?.titleZh ?? sutraId,
+      volumeId: rawVolume,
+      volumeLabel,
+      progress: total.value > 1 ? (cur.value + 1) / total.value : 1,
+      page: cur.value,
+      total: total.value,
+    })
+  }, 700)
+})
 
 // App sutra → 印經坊 built-in preset (its own CBETA text/typesetting).
 // 華嚴經 is 80 卷 split into eight "本" (華嚴經1..8) — pick the 本 by volume.
@@ -280,16 +317,24 @@ function drive(attempt = 0): void {
       doc.head.appendChild(style)
     }
     doc.body.classList.add('app-read')
-    // Open at the chosen volume's chapter. 華嚴: 本 links open at the start,
-    // 卷 links (from 功課) land on the nearest chapter inside the right 本.
-    // Others map 1:1 when 卷 count == 品 count (e.g. 地藏經 13 品 = 13 卷).
+    // Where to open. A ?p= resume wins; otherwise jump to the chosen volume.
     const meta = getSutraMeta(sutraId)
     const chs = chapters.value
-    if (sutraId === 'avatamsaka') {
+    if (resumePage != null) {
+      win.__readerGoto?.(Math.max(0, Math.min(total.value - 1, resumePage)))
+    } else if (sutraId === 'avatamsaka') {
+      // 本 links open at the start; 卷 links land on the nearest chapter.
       const lc = huaTarget().localChapter
       if (lc != null && chs.length > lc) win.__readerGoto?.(chs[lc].value)
-    } else if (meta && chs.length > 1 && chs.length === meta.totalVolumes && volNum > 1) {
-      win.__readerGoto?.(chs[volNum - 1]?.value ?? 0)
+    } else if (volNum > 1 && meta) {
+      if (chs.length > 1 && chs.length === meta.totalVolumes) {
+        // 卷 count == 品 count (e.g. 地藏經 13 品 = 13 卷): exact chapter.
+        win.__readerGoto?.(chs[volNum - 1]?.value ?? 0)
+      } else if (total.value > 1 && meta.totalVolumes > 1) {
+        // Otherwise land proportionally by page — 印經坊's chapters don't line
+        // up with the 卷 grid (金剛 32 卷 vs 2 章, 法華 7 卷 vs 28 品…).
+        win.__readerGoto?.(Math.round(((volNum - 1) / meta.totalVolumes) * (total.value - 1)))
+      }
     }
     installTap()
     finishLoadProgress()

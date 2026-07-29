@@ -42,8 +42,16 @@
           :key="it.slot"
           class="tcard"
           :class="{ 'tcard--done': dailyStore.isDone(it.slot), 'tcard--reveal': justDrew }"
-          :style="{ animationDelay: `${i * 110}ms` }"
+          :style="{ animationDelay: `${300 + i * 160}ms` }"
         >
+          <!-- 蓋板:卍 covered card that magically flips away to reveal the task -->
+          <div
+            v-if="justDrew && !coversDone"
+            class="tcard__cover"
+            :style="{ '--cover-delay': `${300 + i * 160}ms` }"
+          >
+            <span class="tcard__seal">卍</span>
+          </div>
           <span class="tcard__sutra">{{ it.sutraTitle }}</span>
           <span class="tcard__chapter">{{ it.chapterName }}</span>
           <span v-if="it.gist" class="tcard__gist">{{ it.gist }}</span>
@@ -326,10 +334,14 @@ const allDailyDone = computed(
 // every time the page loads on an already-drawn day.
 const justDrew = ref(false)
 const drawBursting = ref(false)
+const coversDone = ref(false)
 async function drawDeck() {
   justDrew.value = true
   drawBursting.value = true
+  coversDone.value = false
   chime.strike(0.7)
+  // Retire the covers once the last one has finished flipping away.
+  setTimeout(() => (coversDone.value = true), 300 + dailyItems.value.length * 160 + 750)
   await dailyStore.markDrawn()
 }
 
@@ -961,41 +973,66 @@ onMounted(async () => {
 }
 .tcard {
   position: relative;
-  overflow: hidden;
 }
+/* The face settles in gently once its cover has flipped away */
 .tcard--reveal {
-  animation: card-flip 0.62s cubic-bezier(0.2, 0.75, 0.2, 1) both;
-  transform-origin: center;
+  animation: card-rise 0.5s var(--ease-out) both;
 }
-@keyframes card-flip {
+@keyframes card-rise {
   0% {
     opacity: 0;
-    transform: perspective(720px) rotateY(-92deg) translateY(-18px) scale(0.9);
+    transform: translateY(12px) scale(0.97);
+  }
+  100% {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* 蓋板:the face-down 卍 cover that magically flips off the card */
+.tcard__cover {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  display: grid;
+  place-items: center;
+  border-radius: var(--r-md);
+  overflow: hidden;
+  transform-origin: left center;
+  backface-visibility: hidden;
+  background: linear-gradient(150deg, #3a2f5e, #241d3e);
+  border: 1px solid rgba(251, 191, 36, 0.5);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.5);
+  animation: cover-flip 0.62s cubic-bezier(0.5, 0, 0.25, 1) var(--cover-delay, 0ms) both;
+}
+.tcard__seal {
+  color: rgba(251, 191, 36, 0.85);
+  font-size: 2rem;
+  text-shadow: 0 0 14px rgba(251, 191, 36, 0.7);
+}
+/* Golden magic sweep flaring as the cover lifts */
+.tcard__cover::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(115deg, transparent 30%, rgba(255, 238, 184, 0.6) 50%, transparent 70%);
+  transform: translateX(-130%);
+  animation: cover-sheen 0.6s ease var(--cover-delay, 0ms) both;
+}
+@keyframes cover-flip {
+  0% {
+    transform: perspective(760px) rotateY(0deg);
+    opacity: 1;
   }
   55% {
     opacity: 1;
   }
   100% {
-    opacity: 1;
-    transform: perspective(720px) rotateY(0deg) translateY(0) scale(1);
+    transform: perspective(760px) rotateY(-118deg);
+    opacity: 0;
   }
 }
-/* Golden light sweeping across the freshly turned card */
-.tcard--reveal::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  background: linear-gradient(
-    115deg,
-    transparent 32%,
-    rgba(255, 238, 184, 0.55) 50%,
-    transparent 68%
-  );
-  transform: translateX(-130%);
-  animation: card-sheen 0.7s ease 0.28s both;
-}
-@keyframes card-sheen {
+@keyframes cover-sheen {
   to {
     transform: translateX(130%);
   }

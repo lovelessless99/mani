@@ -25,6 +25,10 @@
               <p class="sutra__meta tnum">
                 {{ completedVolumes(sutra.id) }} / {{ sutra.totalVolumes }} 卷
               </p>
+              <p v-if="lastRead(sutra.id)" class="sutra__resume tnum">
+                上次讀到 {{ lastRead(sutra.id)!.volumeLabel }}
+                <template v-if="lastRead(sutra.id)!.total"> · {{ (lastRead(sutra.id)!.page ?? 0) + 1 }} / {{ lastRead(sutra.id)!.total }} 頁</template>
+              </p>
             </div>
 
             <ProgressRing
@@ -45,6 +49,18 @@
       :title="selectedSutraMeta?.titleZh"
       :subtitle="sheetSubtitle"
     >
+      <!-- Resume this sutra where it was last left -->
+      <button v-if="selectedLastRead" class="sheet-resume" type="button" @click="resumeSutra">
+        <span class="sheet-resume__main">
+          <span class="sheet-resume__eyebrow">繼續上次</span>
+          <span class="sheet-resume__where tnum"
+            >{{ selectedLastRead.volumeLabel
+            }}<template v-if="selectedLastRead.total"> · 第 {{ (selectedLastRead.page ?? 0) + 1 }} / {{ selectedLastRead.total }} 頁</template></span
+          >
+        </span>
+        <AppIcon name="chevronRight" :size="18" class="sheet-resume__go" />
+      </button>
+
       <!-- 華嚴 reads as 8 本; everything else as its 卷 grid -->
       <div v-if="bookList.length" class="book-list">
         <button v-for="bk in bookList" :key="bk.id" class="book" type="button" @click="goToReader(bk.id)">
@@ -87,7 +103,7 @@ const sutras = getAllSutras()
 
 function resume() {
   const m = reading.last
-  if (m) router.push(`/reader/${m.sutraId}/${m.volumeId}`)
+  if (m) router.push(`/reader/${m.sutraId}/${m.volumeId}?p=${m.page ?? 0}`)
 }
 
 const showVolumeSheet = ref(false)
@@ -103,6 +119,16 @@ const RING_COLORS = [
 const ringColor = (i: number) => RING_COLORS[i % RING_COLORS.length]
 
 const selectedSutraMeta = computed(() => getSutraMeta(selectedSutraId.value))
+
+// Per-sutra resume point — where each 部 was last read.
+const lastRead = (sutraId: string) => reading.forSutra(sutraId)
+const selectedLastRead = computed(() => reading.forSutra(selectedSutraId.value))
+function resumeSutra() {
+  const m = selectedLastRead.value
+  if (!m) return
+  showVolumeSheet.value = false
+  router.push(`/reader/${selectedSutraId.value}/${m.volumeId}?p=${m.page ?? 0}`)
+}
 
 // 華嚴 offers 8 本 for reading; others show their 卷 grid.
 const bookList = computed(() => selectedSutraMeta.value?.readingBooks ?? [])
@@ -235,6 +261,53 @@ onMounted(() => {
   font-size: var(--text-micro);
   color: var(--text-faint);
   letter-spacing: 0.08em;
+}
+
+.sutra__resume {
+  margin-top: var(--s1);
+  font-size: var(--text-micro);
+  letter-spacing: 0.04em;
+  color: var(--sapphire);
+}
+
+/* Resume row inside the volume sheet */
+.sheet-resume {
+  width: 100%;
+  margin-bottom: var(--s3);
+  display: flex;
+  align-items: center;
+  gap: var(--s3);
+  padding: var(--s3) var(--s4);
+  border-radius: var(--r-md);
+  text-align: left;
+  background:
+    radial-gradient(circle at 92% 0%, rgba(96, 165, 250, 0.16), transparent 60%),
+    rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(96, 165, 250, 0.3);
+  transition: transform var(--fast) var(--ease);
+}
+.sheet-resume:active {
+  transform: scale(0.99);
+}
+.sheet-resume__main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.sheet-resume__eyebrow {
+  font-size: var(--text-micro);
+  letter-spacing: 0.2em;
+  color: var(--sapphire);
+}
+.sheet-resume__where {
+  font-size: var(--text-caption);
+  color: var(--text);
+}
+.sheet-resume__go {
+  flex-shrink: 0;
+  color: var(--text-faint);
 }
 
 /* — Book list (華嚴 8 本) ————————————————————— */
