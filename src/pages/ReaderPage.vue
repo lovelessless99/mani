@@ -76,6 +76,23 @@ import AppIcon from 'src/components/ui/AppIcon.vue'
 import AppSpinner from 'src/components/ui/AppSpinner.vue'
 import { getSutraMeta } from 'src/services/sutraService'
 import { useReadingStore } from 'src/stores/readingStore'
+import readerLibrary from 'src/data/meta/reader-library.json'
+
+interface ReaderBook {
+  id: string
+  preset: string
+  label: string
+  chapters: string[]
+}
+interface ReaderSutra {
+  id: string
+  title: string
+  short: string
+  author?: string
+  preset?: string
+  chapters?: string[]
+  books?: ReaderBook[]
+}
 
 const route = useRoute()
 const router = useRouter()
@@ -89,6 +106,11 @@ const resumePage = (() => {
   return Number.isFinite(p) ? p : null
 })()
 const volumeLabel = (() => {
+  const cm = /^c(\d+)$/.exec(rawVolume)
+  if (cm) {
+    const title = (readerLibrary as ReaderSutra[]).find((s) => s.id === sutraId)?.chapters?.[+cm[1]]
+    if (title) return title
+  }
   const m = /^b(\d+)$/.exec(rawVolume)
   if (sutraId === 'avatamsaka') return m ? `第${m[1]}本` : `卷${volNum}`
   return `第${volNum}卷`
@@ -164,7 +186,7 @@ watch(cur, () => {
   saveTimer = setTimeout(() => {
     reading.mark({
       sutraId,
-      sutraTitle: getSutraMeta(sutraId)?.titleZh ?? sutraId,
+      sutraTitle: libEntry?.short ?? getSutraMeta(sutraId)?.titleZh ?? sutraId,
       volumeId: rawVolume,
       volumeLabel,
       progress: total.value > 1 ? (cur.value + 1) / total.value : 1,
@@ -174,19 +196,19 @@ watch(cur, () => {
   }, 700)
 })
 
-// App sutra → 印經坊 built-in preset (its own CBETA text/typesetting).
-// 華嚴經 is 80 卷 split into eight "本" (華嚴經1..8) — pick the 本 by volume.
-const BASE_PRESET: Record<string, string> = {
-  'heart-sutra': '心經',
-  diamond: '金剛經',
-  ksitigarbha: '地藏經',
-  shurangama: '楞嚴經',
-  lotus: '法華經',
-  'medicine-buddha': '藥師經',
-}
+// The reader library maps every app sutra to its 印經坊 preset + chapter list,
+// so 卷/品 links resolve to the printer's own chapters exactly.
+const LIB = readerLibrary as ReaderSutra[]
+const libEntry = LIB.find((s) => s.id === sutraId)
+// A c{N} link jumps to the printer's Nth chapter (0-based) — the accurate path.
+const chapterLink = (() => {
+  const m = /^c(\d+)$/.exec(rawVolume)
+  return m ? parseInt(m[1], 10) : null
+})()
+
 function presetName(): string {
   if (sutraId === 'avatamsaka') return `華嚴經${huaTarget().ben}`
-  return BASE_PRESET[sutraId] ?? ''
+  return libEntry?.preset ?? ''
 }
 
 const progress = computed(() => (total.value > 1 ? (cur.value + 1) / total.value : 1))
@@ -338,6 +360,9 @@ function drive(attempt = 0): void {
     const chs = chapters.value
     if (resumePage != null) {
       win.__readerGoto?.(Math.max(0, Math.min(total.value - 1, resumePage)))
+    } else if (chapterLink != null) {
+      // Library c{N} link → the printer's own Nth chapter, exactly.
+      if (chs.length > chapterLink) win.__readerGoto?.(chs[chapterLink].value)
     } else if (sutraId === 'avatamsaka') {
       // 本 links open at the start; 卷 links land on the nearest chapter.
       const lc = huaTarget().localChapter
@@ -347,8 +372,7 @@ function drive(attempt = 0): void {
         // 卷 count == 品 count (e.g. 地藏經 13 品 = 13 卷): exact chapter.
         win.__readerGoto?.(chs[volNum - 1]?.value ?? 0)
       } else if (total.value > 1 && meta.totalVolumes > 1) {
-        // Otherwise land proportionally by page — 印經坊's chapters don't line
-        // up with the 卷 grid (金剛 32 卷 vs 2 章, 法華 7 卷 vs 28 品…).
+        // 功課 卷 links whose grid doesn't match 印經坊's chapters land by page.
         win.__readerGoto?.(Math.round(((volNum - 1) / meta.totalVolumes) * (total.value - 1)))
       }
     }

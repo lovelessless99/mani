@@ -2,7 +2,7 @@
   <main class="page">
     <header>
       <h1 class="page-title">經文庫</h1>
-      <p class="page-sub">直排誦讀 · 自動記住讀到哪裡</p>
+      <p class="page-sub">直排注音 · 自動記住讀到哪裡</p>
     </header>
 
     <!-- Resume where the book was last left -->
@@ -20,35 +20,22 @@
         <GlassCard clickable @click="openSutra(sutra.id)">
           <div class="sutra">
             <div class="sutra__main">
-              <h2 class="sutra__title">{{ sutra.titleZh }}</h2>
-              <p class="sutra__desc">{{ sutra.description }}</p>
-              <p class="sutra__meta tnum">
-                {{ completedVolumes(sutra.id) }} / {{ sutra.totalVolumes }} 卷
-              </p>
+              <h2 class="sutra__title">{{ sutra.short }}</h2>
+              <p class="sutra__desc">{{ sutra.title }}</p>
+              <p class="sutra__meta tnum">{{ countLabel(sutra) }}</p>
               <p v-if="lastRead(sutra.id)" class="sutra__resume tnum">
                 上次讀到 {{ lastRead(sutra.id)!.volumeLabel }}
                 <template v-if="lastRead(sutra.id)!.total"> · {{ (lastRead(sutra.id)!.page ?? 0) + 1 }} / {{ lastRead(sutra.id)!.total }} 頁</template>
               </p>
             </div>
-
-            <ProgressRing
-              :value="progressStore.getSutraCompletionRatio(sutra.id)"
-              :size="54"
-              :stroke-width="4"
-              :color="ringColor(i)"
-              :label="''"
-            />
+            <ProgressRing :value="ringValue(sutra.id)" :size="52" :stroke-width="4" :color="ringColor(i)" :label="''" />
           </div>
         </GlassCard>
       </li>
     </ul>
 
-    <!-- Volume picker ---------------------------------------- -->
-    <AppSheet
-      v-model="showVolumeSheet"
-      :title="selectedSutraMeta?.titleZh"
-      :subtitle="sheetSubtitle"
-    >
+    <!-- Chapter / 本 picker ---------------------------------------- -->
+    <AppSheet v-model="showVolumeSheet" :title="selected?.short" :subtitle="sheetSubtitle">
       <!-- Resume this sutra where it was last left -->
       <button v-if="selectedLastRead" class="sheet-resume" type="button" @click="resumeSutra">
         <span class="sheet-resume__main">
@@ -61,26 +48,23 @@
         <AppIcon name="chevronRight" :size="18" class="sheet-resume__go" />
       </button>
 
-      <!-- 華嚴 reads as 8 本; everything else as its 卷 grid -->
-      <div v-if="bookList.length" class="book-list">
-        <button v-for="bk in bookList" :key="bk.id" class="book" type="button" @click="goToReader(bk.id)">
-          <span class="book__label">{{ bk.label }}</span>
-          <AppIcon name="chevronRight" :size="16" class="book__go" />
+      <!-- 華嚴 = 8 本 -->
+      <div v-if="selected?.books" class="chap-list">
+        <button v-for="bk in selected.books" :key="bk.id" class="chap" type="button" @click="goTo(bk.id)">
+          <span class="chap__t">{{ bk.label }}</span>
+          <AppIcon name="chevronRight" :size="16" class="chap__go" />
         </button>
       </div>
-      <div v-else class="vol-grid">
-        <button
-          v-for="vol in volumeList"
-          :key="vol.id"
-          class="vol tnum"
-          :class="{ 'vol--read': vol.count > 0 }"
-          type="button"
-          @click="goToReader(vol.id)"
-        >
-          {{ vol.num }}
-          <span v-if="vol.count > 1" class="vol__badge tnum">{{ vol.count }}</span>
+      <!-- Multi-chapter: 印經坊's own chapters, jumped to exactly -->
+      <div v-else-if="selected?.chapters?.length" class="chap-list">
+        <button v-for="(ch, idx) in selected.chapters" :key="idx" class="chap" type="button" @click="goTo(`c${idx}`)">
+          <span class="chap__n tnum">{{ idx + 1 }}</span>
+          <span class="chap__t">{{ ch }}</span>
+          <AppIcon name="chevronRight" :size="16" class="chap__go" />
         </button>
       </div>
+      <!-- Single-scroll sutra -->
+      <button v-else class="single-read" type="button" @click="goTo('001')">開始誦讀</button>
     </AppSheet>
   </main>
 </template>
@@ -94,12 +78,29 @@ import AppSheet from 'src/components/ui/AppSheet.vue'
 import AppIcon from 'src/components/ui/AppIcon.vue'
 import { useProgressStore } from 'src/stores/progressStore'
 import { useReadingStore } from 'src/stores/readingStore'
-import { getAllSutras, getSutraMeta, formatVolumeId } from 'src/services/sutraService'
+import { getSutraMeta } from 'src/services/sutraService'
+import readerLibrary from 'src/data/meta/reader-library.json'
+
+interface ReaderBook {
+  id: string
+  preset: string
+  label: string
+  chapters: string[]
+}
+interface ReaderSutra {
+  id: string
+  title: string
+  short: string
+  author?: string
+  preset?: string
+  chapters?: string[]
+  books?: ReaderBook[]
+}
 
 const router = useRouter()
 const progressStore = useProgressStore()
 const reading = useReadingStore()
-const sutras = getAllSutras()
+const sutras = readerLibrary as ReaderSutra[]
 
 function resume() {
   const m = reading.last
@@ -108,17 +109,21 @@ function resume() {
 
 const showVolumeSheet = ref(false)
 const selectedSutraId = ref('')
+const selected = computed(() => sutras.find((s) => s.id === selectedSutraId.value))
 
-const RING_COLORS = [
-  'var(--amethyst)',
-  'var(--sapphire)',
-  'var(--emerald)',
-  'var(--amber)',
-  'var(--aqua)',
-]
+const RING_COLORS = ['var(--amethyst)', 'var(--sapphire)', 'var(--emerald)', 'var(--amber)', 'var(--aqua)']
 const ringColor = (i: number) => RING_COLORS[i % RING_COLORS.length]
 
-const selectedSutraMeta = computed(() => getSutraMeta(selectedSutraId.value))
+// Completion ring for 功課 sutras; how-far-read for the reading-only ones.
+function ringValue(id: string): number {
+  if (getSutraMeta(id)) return progressStore.getSutraCompletionRatio(id)
+  return reading.forSutra(id)?.progress ?? 0
+}
+function countLabel(s: ReaderSutra): string {
+  if (s.books) return `${s.books.length} 本`
+  const n = s.chapters?.length ?? 0
+  return n > 0 ? `${n} 章` : '全一卷'
+}
 
 // Per-sutra resume point — where each 部 was last read.
 const lastRead = (sutraId: string) => reading.forSutra(sutraId)
@@ -130,37 +135,19 @@ function resumeSutra() {
   router.push(`/reader/${selectedSutraId.value}/${m.volumeId}?p=${m.page ?? 0}`)
 }
 
-// 華嚴 offers 8 本 for reading; others show their 卷 grid.
-const bookList = computed(() => selectedSutraMeta.value?.readingBooks ?? [])
 const sheetSubtitle = computed(() => {
-  const m = selectedSutraMeta.value
-  if (!m) return ''
-  return bookList.value.length ? `分 ${bookList.value.length} 本 · 點選開始誦讀` : `共 ${m.totalVolumes} 卷 · 點選開始誦讀`
+  const s = selected.value
+  if (!s) return ''
+  if (s.books) return `分 ${s.books.length} 本 · 點選開始誦讀`
+  const n = s.chapters?.length ?? 0
+  return n > 0 ? `共 ${n} 章 · 點選章節直接翻到` : '全一卷 · 點選開始誦讀'
 })
-
-const volumeList = computed(() => {
-  const meta = selectedSutraMeta.value
-  if (!meta) return []
-  return Array.from({ length: meta.totalVolumes }, (_, i) => {
-    const id = formatVolumeId(i + 1)
-    return {
-      num: i + 1,
-      id,
-      count: progressStore.getVolumeCount(selectedSutraId.value, id),
-    }
-  })
-})
-
-function completedVolumes(sutraId: string): number {
-  return progressStore.progressMap[sutraId]?.totalCompleted ?? 0
-}
 
 function openSutra(sutraId: string) {
   selectedSutraId.value = sutraId
   showVolumeSheet.value = true
 }
-
-function goToReader(volumeId: string) {
+function goTo(volumeId: string) {
   showVolumeSheet.value = false
   router.push(`/reader/${selectedSutraId.value}/${volumeId}`)
 }
@@ -227,42 +214,39 @@ onMounted(() => {
   list-style: none;
   margin-top: var(--s5);
 }
-
 .sutra-list > li + li {
   margin-top: var(--s3);
 }
-
 .sutra {
   display: flex;
   align-items: center;
   gap: var(--s4);
 }
-
 .sutra__main {
   flex: 1;
   min-width: 0;
 }
-
 .sutra__title {
   font-size: var(--text-title);
   font-weight: 300;
   letter-spacing: 0.08em;
 }
-
 .sutra__desc {
   margin-top: var(--s1);
   font-size: var(--text-caption);
   color: var(--text-dim);
   line-height: 1.5;
+  display: -webkit-box;
+  -webkit-line-clamp: 1;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
 }
-
 .sutra__meta {
   margin-top: var(--s2);
   font-size: var(--text-micro);
   color: var(--text-faint);
   letter-spacing: 0.08em;
 }
-
 .sutra__resume {
   margin-top: var(--s1);
   font-size: var(--text-micro);
@@ -270,7 +254,7 @@ onMounted(() => {
   color: var(--sapphire);
 }
 
-/* Resume row inside the volume sheet */
+/* Resume row inside the sheet */
 .sheet-resume {
   width: 100%;
   margin-bottom: var(--s3);
@@ -310,105 +294,65 @@ onMounted(() => {
   color: var(--text-faint);
 }
 
-/* — Book list (華嚴 8 本) ————————————————————— */
-.book-list {
+/* — Chapter / 本 list ————————————————————————— */
+.chap-list {
   display: flex;
   flex-direction: column;
   gap: var(--s2);
   padding-bottom: var(--s2);
+  max-height: 60vh;
+  overflow-y: auto;
 }
-.book {
+.chap {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  padding: var(--s4);
+  gap: var(--s3);
+  padding: var(--s3) var(--s4);
   border-radius: var(--r-md);
   border: 1px solid var(--hairline);
   background: rgba(255, 255, 255, 0.03);
+  text-align: left;
   transition:
     background var(--fast) var(--ease),
     transform var(--fast) var(--ease);
 }
-.book:hover {
+.chap:hover {
   background: var(--glass-2);
 }
-.book:active {
+.chap:active {
   transform: scale(0.99);
 }
-.book__label {
+.chap__n {
+  flex-shrink: 0;
+  width: 1.9rem;
+  height: 1.9rem;
+  display: grid;
+  place-items: center;
+  border-radius: var(--r-full);
+  background: rgba(167, 139, 250, 0.16);
+  color: var(--amethyst);
+  font-size: var(--text-micro);
+}
+.chap__t {
+  flex: 1;
+  min-width: 0;
   font-family: var(--font-serif);
   font-size: var(--text-body);
-  letter-spacing: 0.08em;
-  color: var(--text);
+  letter-spacing: 0.04em;
 }
-.book__go {
+.chap__go {
+  flex-shrink: 0;
   color: var(--text-faint);
 }
 
-/* — Volume grid ————————————————————————————
-   A grid of numbers scans far faster than a scrolling list when a
-   sutra runs to 80 volumes, and read volumes stay visible at a glance. */
-.vol-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(3rem, 1fr));
-  gap: var(--s2);
-  padding-bottom: var(--s2);
-}
-
-.vol {
-  position: relative;
-  aspect-ratio: 1;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: var(--r-sm);
-  border: 1px solid var(--hairline);
-  background: rgba(255, 255, 255, 0.03);
-  color: var(--text-dim);
-  font-size: var(--text-caption);
-  transition:
-    background var(--fast) var(--ease),
-    color var(--fast) var(--ease),
-    transform var(--fast) var(--ease);
-}
-
-.vol:hover {
-  background: var(--glass-2);
-  color: var(--text);
-}
-
-.vol:active {
-  transform: scale(0.93);
-}
-
-.vol:focus-visible {
-  outline: 2px solid var(--accent);
-  outline-offset: 2px;
-}
-
-/* Read volumes carry the accent glow — the wall of numbers slowly
-   lights up as the sutra is completed. */
-.vol--read {
-  color: var(--text);
-  background: rgba(167, 139, 250, 0.14);
-  border-color: rgba(167, 139, 250, 0.4);
-  box-shadow: inset 0 0 12px rgba(167, 139, 250, 0.15);
-}
-
-.vol__badge {
-  position: absolute;
-  top: -4px;
-  right: -4px;
-  min-width: 16px;
-  height: 16px;
-  padding: 0 4px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: var(--r-full);
-  background: var(--amethyst);
+.single-read {
+  width: 100%;
+  padding: var(--s4);
+  border-radius: var(--r-md);
+  font-size: var(--text-body);
+  letter-spacing: 0.1em;
   color: #14101f;
-  font-size: 10px;
-  font-weight: 500;
+  background: linear-gradient(135deg, #e8ce8e, #c9a24e);
+  border: 1px solid rgba(201, 162, 78, 0.5);
 }
 </style>
