@@ -40,7 +40,9 @@ export default defineConfig({
     // as a component and silently renders nothing.
     vue({ ...templateCompilerOptions }),
     VitePWA({
-      registerType: 'autoUpdate',
+      // 'prompt' so a new deploy surfaces the 立即更新 refresh button
+      // (PwaPrompts) instead of silently swapping under the user.
+      registerType: 'prompt',
       // Resolve the virtual:pwa-register module in `vite` dev too, so the
       // install/update composable does not 500 the dev server.
       devOptions: { enabled: true, type: 'module' },
@@ -71,6 +73,10 @@ export default defineConfig({
         // The bundled 印經坊 reader is ~4MB; don't precache it into the SW.
         globIgnores: ['**/yinjingfang/**'],
         maximumFileSizeToCacheInBytes: 3 * 1024 * 1024,
+        // The reader iframes /yinjingfang/index.html. Without this, the SPA
+        // navigation fallback answers that iframe navigation with the app's
+        // index.html, so 印經坊 never loads and the reader stalls at 90%.
+        navigateFallbackDenylist: [/^\/yinjingfang\//],
         // Sutra volumes come from Firebase Storage — cache them on first read
         runtimeCaching: [
           {

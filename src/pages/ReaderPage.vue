@@ -25,10 +25,16 @@
 
     <div v-if="!ready" class="reader__loading">
       <div class="reader__loadcard">
-        <AppSpinner :size="30" />
-        <p class="reader__loadtitle">載入經文中…</p>
-        <div class="reader__loadbar"><i :style="{ width: `${loadPct}%` }" /></div>
-        <span class="reader__loadpct tnum">{{ Math.round(loadPct) }}%</span>
+        <template v-if="!loadError">
+          <AppSpinner :size="30" />
+          <p class="reader__loadtitle">載入經文中…</p>
+          <div class="reader__loadbar"><i :style="{ width: `${loadPct}%` }" /></div>
+          <span class="reader__loadpct tnum">{{ Math.round(loadPct) }}%</span>
+        </template>
+        <template v-else>
+          <p class="reader__loadtitle">載入失敗,請重試</p>
+          <button class="reader__retry" type="button" @click="retryLoad">重新載入</button>
+        </template>
       </div>
     </div>
 
@@ -119,6 +125,7 @@ const twopage = ref(false)
 // Loading progress. The 4MB 印經坊 + gzip decompression give no byte events,
 // so we ease toward 90% while it loads and snap to 100% when the page renders.
 const loadPct = ref(0)
+const loadError = ref(false)
 let loadTimer: ReturnType<typeof setInterval> | undefined
 function startLoadProgress() {
   loadPct.value = 6
@@ -130,6 +137,14 @@ function startLoadProgress() {
 function finishLoadProgress() {
   clearInterval(loadTimer)
   loadPct.value = 100
+}
+// Never leave the bar stuck at 90% — reload the iframe from the network.
+function retryLoad() {
+  loadError.value = false
+  ready.value = false
+  tapInstalled = false
+  startLoadProgress()
+  if (frame.value) frame.value.src = `/yinjingfang/index.html?r=${Date.now()}`
 }
 onMounted(() => {
   startLoadProgress()
@@ -270,6 +285,7 @@ function onScrubUp() {
 function drive(attempt = 0): void {
   const retry = () => {
     if (attempt < 80) setTimeout(() => drive(attempt + 1), 150)
+    else loadError.value = true
   }
   const doc = idoc()
   const win = iwin()
@@ -346,7 +362,9 @@ function drive(attempt = 0): void {
 
 function onLoad() {
   ready.value = false
+  loadError.value = false
   panelShown.value = false
+  tapInstalled = false
   chapters.value = []
   startLoadProgress()
   drive()
@@ -411,6 +429,15 @@ function onLoad() {
   font-size: var(--text-micro);
   letter-spacing: 0.08em;
   color: var(--text-faint);
+}
+.reader__retry {
+  padding: var(--s2) var(--s5);
+  border-radius: var(--r-full);
+  font-size: var(--text-caption);
+  letter-spacing: 0.08em;
+  color: #e8ce8e;
+  background: rgba(201, 162, 78, 0.14);
+  border: 1px solid rgba(201, 162, 78, 0.5);
 }
 
 .reader__chip {
