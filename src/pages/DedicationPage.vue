@@ -1,54 +1,39 @@
 <template>
-  <main class="page">
-    <header>
-      <h1 class="page-title">迴向</h1>
-      <p class="page-sub">點一盞迴向燈,將功德施與所願之處</p>
-    </header>
+  <main class="ded">
+    <!-- A living river of every lamp lit — drag to look across it -->
+    <div class="ded__river"><LanternRiver :lamps="store.history" :newest-id="store.latest?.id" /></div>
 
-    <!-- 功德 balance ----------------------------------------- -->
-    <GlassCard class="merit">
-      <p class="section-label">功德</p>
-      <div class="merit__main">
-        <span class="merit__n tnum">{{ merit.balance }}</span>
-        <span class="merit__u">可迴向</span>
+    <!-- Overlay HUD (does not block dragging the river) -->
+    <div class="ded__hud">
+      <div class="ded__top">
+        <h1 class="ded__title">迴向</h1>
+        <p class="ded__balance"><b class="tnum">{{ merit.balance }}</b> 功德可迴向</p>
+        <p v-if="store.history.length" class="ded__tally tnum">
+          燈海 · {{ store.history.length }} 盞 · 共 {{ store.totalGiven }} 功德
+        </p>
+        <p class="ded__hint">拖曳畫面環視河燈</p>
       </div>
-      <div class="merit__sub tnum">
-        <span>累積 {{ merit.earned }}</span>
-        <span class="t-faint">·</span>
-        <span>已迴向 {{ merit.spent }}</span>
-      </div>
-    </GlassCard>
+      <button class="ded__light" type="button" @click="sheetOpen = true">🪔 點一盞迴向燈</button>
+    </div>
 
-    <!-- 立願 · standing vow ---------------------------------- -->
-    <GlassCard v-if="vow.active" class="vow">
-      <div class="vow__head">
-        <div>
-          <p class="section-label">立願迴向</p>
-          <p class="vow__target">為 {{ vow.vow?.targetName }}</p>
+    <!-- Controls sheet -->
+    <AppSheet v-model="sheetOpen" title="點迴向燈" :subtitle="`功德 ${merit.balance} 可迴向`">
+      <!-- 立願 -->
+      <div v-if="vow.active" class="vow vow--sheet">
+        <div class="vow__head">
+          <div>
+            <p class="section-label">立願迴向</p>
+            <p class="vow__target">為 {{ vow.vow?.targetName }}</p>
+          </div>
+          <button class="vow__clear" type="button" @click="onClearVow">捨願</button>
         </div>
-        <button class="vow__clear" type="button" @click="onClearVow">捨願</button>
+        <div class="vow__meter"><div class="vow__fill" :style="{ width: `${vow.ratio * 100}%` }" /></div>
+        <p class="vow__nums tnum">
+          {{ vow.vow?.progress }} / {{ vow.vow?.goal }}
+          <span class="t-faint">· 尚缺 {{ vow.remaining }}</span>
+        </p>
       </div>
-      <div class="vow__meter"><div class="vow__fill" :style="{ width: `${vow.ratio * 100}%` }" /></div>
-      <p class="vow__nums tnum">
-        {{ vow.vow?.progress }} / {{ vow.vow?.goal }}
-        <span class="t-faint">· 尚缺 {{ vow.remaining }}</span>
-      </p>
-    </GlassCard>
-    <GlassCard v-else class="vow vow--make">
-      <p class="section-label">立願迴向</p>
-      <p class="vow__hint">為所繫念之人事,立下欲迴向的功德數,日積月累至圓滿。</p>
-      <div class="vow__form">
-        <input v-model="vowTarget" class="field" type="text" maxlength="40" placeholder="迴向對象,如:先父 王公" />
-        <div class="vow__goalrow">
-          <input v-model.number="vowGoal" class="field field--num tnum" type="number" min="1" max="1000000" placeholder="願數" />
-          <span class="vow__unit">功德</span>
-          <AppButton variant="glass" :disabled="!canMakeVow" @click="onMakeVow">立願</AppButton>
-        </div>
-      </div>
-    </GlassCard>
 
-    <!-- 迴向對象 --------------------------------------------- -->
-    <section class="block">
       <p class="section-label">迴向對象</p>
       <ul class="targets">
         <li v-for="t in targets" :key="t.id">
@@ -66,11 +51,8 @@
         maxlength="40"
         placeholder="寫下心中所繫念的人或事"
       />
-    </section>
 
-    <!-- 迴向偈 ----------------------------------------------- -->
-    <section class="block">
-      <p class="section-label">迴向偈</p>
+      <p class="section-label mt6">迴向偈</p>
       <ul class="verses">
         <li v-for="v in verses" :key="v.id">
           <button class="pick" :class="{ 'pick--on': verseId === v.id }" type="button" @click="verseId = v.id">
@@ -79,15 +61,11 @@
               <span class="pick__src">{{ v.source }}</span>
             </span>
             <span class="pick__verse t-serif">{{ v.lines.join('，') }}。</span>
-            <span class="pick__hint">{{ v.gloss }}</span>
           </button>
         </li>
       </ul>
-    </section>
 
-    <!-- 供養份量 --------------------------------------------- -->
-    <section class="block">
-      <p class="section-label">此燈供養</p>
+      <p class="section-label mt6">此燈供養</p>
       <div class="amounts">
         <button
           v-for="a in amounts"
@@ -101,23 +79,11 @@
           <span class="amount__l">{{ a.label }}</span>
         </button>
       </div>
-    </section>
 
-    <AppButton variant="accent" block class="cta" :disabled="!canDedicate" :loading="saving" @click="begin">
-      {{ merit.balance > 0 ? `🪔 點燈迴向 · ${offer} 功德` : '尚無可迴向的功德' }}
-    </AppButton>
-
-    <!-- 燈海 · lit lamps ------------------------------------- -->
-    <section v-if="store.history.length" class="block">
-      <p class="section-label">燈海 · 已點 {{ store.history.length }} 盞 · 共 {{ store.totalGiven }} 功德</p>
-      <div class="lamps">
-        <div v-for="r in store.history.slice(0, 60)" :key="r.id" class="lamp" :title="`${r.targetName} · ${r.merit} 功德`">
-          <span class="lamp__flame">🪔</span>
-          <span class="lamp__name">{{ r.targetName }}</span>
-          <span class="lamp__merit tnum">{{ r.merit }}</span>
-        </div>
-      </div>
-    </section>
+      <AppButton variant="accent" block class="cta" :disabled="!canDedicate" :loading="saving" @click="begin">
+        {{ merit.balance > 0 ? `🪔 點燈迴向 · ${offer} 功德` : '尚無可迴向的功德' }}
+      </AppButton>
+    </AppSheet>
 
     <DedicationCeremony
       :open="ceremonyOpen"
@@ -131,9 +97,10 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
-import GlassCard from 'src/components/GlassCard.vue'
 import AppButton from 'src/components/ui/AppButton.vue'
+import AppSheet from 'src/components/ui/AppSheet.vue'
 import DedicationCeremony from 'src/components/DedicationCeremony.vue'
+import LanternRiver from 'src/components/LanternRiver.vue'
 import { useProgressStore } from 'src/stores/progressStore'
 import { useMeritStore } from 'src/stores/meritStore'
 import { useDedicationStore } from 'src/stores/dedicationStore'
@@ -200,6 +167,7 @@ async function onClearVow() {
   }
 }
 
+const sheetOpen = ref(false)
 const verseId = ref(verses[0].id)
 const targetId = ref(targets[0].id)
 const customTarget = ref('')
@@ -237,6 +205,7 @@ async function begin() {
       toast.info(`圓滿:為 ${vow.vow?.targetName} 的迴向已達願數`)
       vow.ackFulfilled()
     }
+    sheetOpen.value = false
     ceremonyOpen.value = true
   } catch (e) {
     toast.error(describeError(e))
@@ -482,40 +451,85 @@ onMounted(async () => {
   margin-top: var(--s6);
 }
 
-/* — 燈海 ————————————————————————————————————— */
-.lamps {
-  margin-top: var(--s3);
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(5rem, 1fr));
-  gap: var(--s2);
+/* — Immersive river scene ——————————————————————————— */
+.ded {
+  position: fixed;
+  inset: 0;
+  overflow: hidden;
+  background: #070a16;
 }
-.lamp {
+/* Draggable — the river takes pointer events so you can orbit the view */
+.ded__river {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+}
+/* Overlay chrome floats above but lets drags fall through to the river */
+.ded__hud {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
   display: flex;
   flex-direction: column;
-  align-items: center;
-  gap: 2px;
-  padding: var(--s3) var(--s2);
-  border-radius: var(--r-md);
-  background:
-    radial-gradient(circle at 50% 30%, rgba(251, 191, 36, 0.22), transparent 70%),
-    rgba(255, 255, 255, 0.02);
-  border: 1px solid rgba(251, 191, 36, 0.22);
+  justify-content: space-between;
 }
-.lamp__flame {
-  font-size: 1.4rem;
-  filter: drop-shadow(0 0 8px rgba(251, 191, 36, 0.8));
+.ded__top {
+  padding: calc(var(--safe-t) + var(--s5)) var(--s5) 0;
+  text-align: center;
+  background: linear-gradient(to bottom, rgba(7, 10, 22, 0.75), transparent);
 }
-.lamp__name {
-  max-width: 100%;
-  font-size: var(--text-micro);
-  letter-spacing: 0.04em;
+.ded__title {
+  font-size: var(--text-display);
+  font-weight: 300;
+  letter-spacing: 0.14em;
+}
+.ded__balance {
+  margin-top: var(--s2);
+  font-size: var(--text-caption);
   color: var(--text-dim);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
 }
-.lamp__merit {
-  font-size: 10px;
+.ded__balance b {
+  font-size: var(--text-title);
+  font-weight: 300;
   color: var(--amber);
+  text-shadow: 0 0 18px rgba(251, 191, 36, 0.5);
+}
+.ded__tally {
+  margin-top: var(--s1);
+  font-size: var(--text-micro);
+  letter-spacing: 0.06em;
+  color: var(--text-faint);
+}
+.ded__hint {
+  margin-top: var(--s3);
+  font-size: var(--text-micro);
+  letter-spacing: 0.1em;
+  color: var(--text-faint);
+  opacity: 0.7;
+}
+.ded__light {
+  pointer-events: auto;
+  align-self: center;
+  margin-bottom: calc(var(--safe-b) + var(--tabbar-h) + var(--s4));
+  padding: var(--s3) var(--s6);
+  border-radius: var(--r-full);
+  font-size: var(--text-body);
+  letter-spacing: 0.08em;
+  color: #14101f;
+  background: linear-gradient(135deg, #ffe0a0, #e8b44e);
+  border: 1px solid rgba(255, 220, 150, 0.6);
+  box-shadow: 0 10px 30px -8px rgba(232, 180, 78, 0.7);
+  transition: transform var(--fast) var(--ease);
+}
+.ded__light:active {
+  transform: scale(0.97);
+}
+
+.vow--sheet {
+  margin-bottom: var(--s4);
+}
+.mt6 {
+  margin-top: var(--s6);
 }
 </style>
