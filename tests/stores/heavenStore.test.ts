@@ -5,33 +5,25 @@ vi.mock('src/services/dataAccess', () => ({
   getDocData: vi.fn(),
   setDocData: vi.fn(),
 }))
-vi.mock('src/services/gemService', () => ({
-  getAllGems: vi.fn(),
-  createGem: vi.fn(),
-}))
-// progressStore (pulled in for the 華嚴 gate) reaches sutraService, which
-// imports the Firebase boot module — that throws under CI where the test
-// step has no API key. Stub both, as progressStore.test.ts does.
+// meritStore derives 功德 from progressStore, which reaches sutraService and
+// the Firebase boot module — stub both, as the other store tests do.
 vi.mock('src/services/progressService', () => ({
   getProgress: vi.fn(),
   recordRecitation: vi.fn(),
 }))
 vi.mock('src/services/sutraService', () => ({
-  getAllSutras: vi.fn(() => []),
+  getAllSutras: vi.fn(() => [{ id: 'avatamsaka', totalVolumes: 80 }]),
   getSutraMeta: vi.fn(),
   loadVolume: vi.fn(),
 }))
 
 import { getDocData, setDocData } from 'src/services/dataAccess'
-import { getAllGems } from 'src/services/gemService'
 import { useHeavenStore } from 'src/stores/heavenStore'
-import { useGemStore } from 'src/stores/gemStore'
 import { useProgressStore } from 'src/stores/progressStore'
-import type { GemRecord } from 'src/types/gem'
 import type { SutraProgress } from 'src/types/sutra'
 
-// Seed cumulative 華嚴 卷 recited, which now gates the ascent.
-function setHuayan(vols: number) {
+// Seed lifetime 功德 = total 遍 recited/memorised across sutras.
+function setMerit(vols: number) {
   const progress = useProgressStore()
   const volumes: SutraProgress['volumes'] = {}
   for (let i = 0; i < vols; i++) {
@@ -45,32 +37,6 @@ function setHuayan(vols: number) {
   }
 }
 
-function gems(n: number): GemRecord[] {
-  return Array.from({ length: n }, (_, i) => ({
-    id: `g${i}`,
-    earnedAt: '2026-06-01T00:00:00Z',
-    source: 'sutra_volume',
-    sourceRef: `k/${i}`,
-    params: {
-      colorHex: '#4f9dff',
-      transmission: 0.8,
-      iridescence: 0.4,
-      iridescenceIOR: 1.5,
-      roughness: 0.03,
-      geometry: 'octahedron',
-    },
-  }))
-}
-
-async function withGems(n: number) {
-  vi.mocked(getAllGems).mockResolvedValue(gems(n))
-  const gemStore = useGemStore()
-  await gemStore.loadGems()
-  const store = useHeavenStore()
-  await store.load()
-  return store
-}
-
 describe('heavenStore', () => {
   beforeEach(() => {
     setActivePinia(createPinia())
@@ -79,70 +45,44 @@ describe('heavenStore', () => {
     vi.mocked(setDocData).mockResolvedValue(undefined)
   })
 
-  it('starts at the ruined 娑婆 with power equal to the gem count', async () => {
-    const store = await withGems(10)
+  it('starts at the ruined 娑婆 with no merit', async () => {
+    const store = useHeavenStore()
+    await store.load()
     expect(store.tier).toBe(0)
+    expect(store.maxTier).toBe(0)
     expect(store.heaven.name).toBe('娑婆穢土')
-    expect(store.totalPower).toBe(10)
-    expect(store.freePower).toBe(10)
+    expect(store.earned).toBe(0)
   })
 
-  it('placing a structure allocates its power without destroying gems', async () => {
-    const store = await withGems(10)
-    await store.place('palace') // cost 8
-    expect(store.build.palace).toBe(1)
-    expect(store.freePower).toBe(2)
-    expect(store.totalPower).toBe(10) // gems untouched
+  it('meritForTier climbs and gates each heaven', () => {
+    const store = useHeavenStore()
+    expect(store.meritForTier(0)).toBe(0)
+    expect(store.meritForTier(1)).toBe(4) // 1*(1+3)
+    expect(store.meritForTier(2)).toBe(10) // 2*(2+3)
+    expect(store.meritForTier(3)).toBe(18)
   })
 
-  it('refuses to build beyond available power', async () => {
-    const store = await withGems(3)
-    const ok = await store.place('palace') // cost 8 > 3
-    expect(ok).toBe(false)
-    expect(store.build.palace).toBe(0)
-    expect(store.freePower).toBe(3)
+  it('maxTier rises automatically as 功德 accumulates', async () => {
+    setMerit(10) // opens tier 1 (4) and tier 2 (10), not tier 3 (18)
+    const store = useHeavenStore()
+    await store.load()
+    expect(store.maxTier).toBe(2)
   })
 
-  it('removing a structure returns its power', async () => {
-    const store = await withGems(10)
-    await store.place('pagoda') // 4
-    expect(store.freePower).toBe(6)
-    await store.remove('pagoda')
-    expect(store.build.pagoda).toBe(0)
-    expect(store.freePower).toBe(10)
+  it('goTo clamps to the highest heaven opened', async () => {
+    setMerit(10)
+    const store = useHeavenStore()
+    await store.load()
+    await store.goTo(5) // beyond maxTier (2) — ignored, stays at the saved 0
+    expect(store.tier).toBe(0)
+    await store.goTo(2) // at the ceiling — allowed
+    expect(store.tier).toBe(2)
   })
 
-  it('ascent is gated by 華嚴 recitation, not by building', async () => {
-    const store = await withGems(20)
-    expect(store.nextNeed).toBe(3) // tier 0 → 1 needs 3 卷
-    expect(store.canAscend).toBe(false)
-    await store.place('pagoda') // building alone does not open the ascent
-    expect(store.canAscend).toBe(false)
-    setHuayan(3)
-    expect(store.canAscend).toBe(true)
-  })
-
-  it('ascend moves up a heaven and raises the ceiling', async () => {
-    const store = await withGems(20)
-    setHuayan(3)
-    const ok = await store.ascend()
-    expect(ok).toBe(true)
-    expect(store.tier).toBe(1)
-    expect(store.maxTier).toBe(1)
-    expect(store.heaven.name).toBe('四天王天')
-  })
-
-  it('lightLamp kindles one more lamp each call', async () => {
-    const store = await withGems(5)
-    expect(store.litLamps).toBe(0)
-    await store.lightLamp()
-    await store.lightLamp()
-    expect(store.litLamps).toBe(2)
-  })
-
-  it('cannot navigate above the highest unlocked heaven', async () => {
-    const store = await withGems(20)
-    await store.goTo(5)
-    expect(store.tier).toBe(0) // maxTier still 0
+  it('atTop only when merit has opened the final heaven', async () => {
+    setMerit(100000)
+    const store = useHeavenStore()
+    await store.load()
+    expect(store.atTop).toBe(true)
   })
 })

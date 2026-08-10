@@ -17,8 +17,7 @@ function makeRecord(over: Partial<DedicationRecord> = {}): DedicationRecord {
     verseId: 'universal',
     targetId: 'all',
     targetName: '法界一切眾生',
-    snapshot: { recite: 10, memorize: 4 },
-    merit: { recite: 10, memorize: 4 },
+    merit: 14,
     ...over,
   }
 }
@@ -29,10 +28,11 @@ describe('dedicationStore', () => {
     vi.clearAllMocks()
   })
 
-  it('starts with no records', () => {
+  it('starts with no lamps', () => {
     const store = useDedicationStore()
     expect(store.history).toEqual([])
     expect(store.latest).toBeNull()
+    expect(store.totalGiven).toBe(0)
   })
 
   it('loadDedications populates records', async () => {
@@ -53,85 +53,33 @@ describe('dedicationStore', () => {
     expect(store.latest?.id).toBe('new')
   })
 
-  it('pendingMerit is the full total when nothing has been dedicated', () => {
-    const store = useDedicationStore()
-    expect(store.pendingMerit({ recite: 12, memorize: 3 })).toEqual({
-      recite: 12,
-      memorize: 3,
-    })
-  })
-
-  it('pendingMerit subtracts the latest snapshot', async () => {
+  it('totalGiven sums the merit of every lamp', async () => {
     vi.mocked(getAllDedications).mockResolvedValueOnce([
-      makeRecord({ snapshot: { recite: 10, memorize: 4 } }),
+      makeRecord({ id: 'a', merit: 7 }),
+      makeRecord({ id: 'b', merit: 49 }),
     ])
     const store = useDedicationStore()
     await store.loadDedications()
-    expect(store.pendingMerit({ recite: 17, memorize: 4 })).toEqual({
-      recite: 7,
-      memorize: 0,
-    })
+    expect(store.totalGiven).toBe(56)
   })
 
-  it('pendingMerit never goes negative when totals trail the snapshot', async () => {
-    vi.mocked(getAllDedications).mockResolvedValueOnce([
-      makeRecord({ snapshot: { recite: 50, memorize: 20 } }),
-    ])
-    const store = useDedicationStore()
-    await store.loadDedications()
-    expect(store.pendingMerit({ recite: 10, memorize: 5 })).toEqual({
-      recite: 0,
-      memorize: 0,
-    })
-  })
-
-  it('dedicate records the merit since the last snapshot and keeps the new totals', async () => {
-    vi.mocked(getAllDedications).mockResolvedValueOnce([
-      makeRecord({ snapshot: { recite: 10, memorize: 4 } }),
-    ])
-    vi.mocked(createDedication).mockImplementationOnce(async (input) => ({
-      id: 'd2',
-      ...input,
-    }))
-
-    const store = useDedicationStore()
-    await store.loadDedications()
-
-    const record = await store.dedicate({
-      verseId: 'pureland',
-      targetId: 'all',
-      targetName: '法界一切眾生',
-      totals: { recite: 25, memorize: 9 },
-    })
-
-    expect(record.merit).toEqual({ recite: 15, memorize: 5 })
-    expect(record.snapshot).toEqual({ recite: 25, memorize: 9 })
-    expect(store.latest?.id).toBe('d2')
-  })
-
-  it('dedicating twice with no practice in between yields zero merit', async () => {
+  it('light records a lamp carrying the given merit', async () => {
     vi.mocked(getAllDedications).mockResolvedValueOnce([])
-    vi.mocked(createDedication).mockImplementation(async (input) => ({
-      id: `d-${Math.random()}`,
-      ...input,
-    }))
+    vi.mocked(createDedication).mockImplementationOnce(async (input) => ({ id: 'd2', ...input }))
 
     const store = useDedicationStore()
     await store.loadDedications()
 
-    await store.dedicate({
-      verseId: 'universal',
-      targetId: 'all',
-      targetName: '法界一切眾生',
-      totals: { recite: 8, memorize: 2 },
-    })
-    const second = await store.dedicate({
-      verseId: 'universal',
-      targetId: 'all',
-      targetName: '法界一切眾生',
-      totals: { recite: 8, memorize: 2 },
+    const record = await store.light({
+      verseId: 'pureland',
+      targetId: 'custom',
+      targetName: '先父 王公',
+      merit: 108,
     })
 
-    expect(second.merit).toEqual({ recite: 0, memorize: 0 })
+    expect(record.merit).toBe(108)
+    expect(record.targetName).toBe('先父 王公')
+    expect(store.latest?.id).toBe('d2')
+    expect(store.totalGiven).toBe(108)
   })
 })

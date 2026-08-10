@@ -41,8 +41,20 @@
       <AppButton variant="glass" block class="account__out" @click="signOut">登出</AppButton>
     </GlassCard>
 
+    <!-- 使用指南 -->
+    <GlassCard class="setting" clickable @click="router.push('/guide')">
+      <div class="row">
+        <AppIcon name="book" :size="20" class="row__icon" />
+        <div class="row__main">
+          <h2 class="row__title">使用指南</h2>
+          <p class="row__desc">各功能說明 · 諸天功德登天表</p>
+        </div>
+        <AppIcon name="chevronRight" :size="18" class="row__icon" />
+      </div>
+    </GlassCard>
+
     <!-- Dashboard -->
-    <GlassCard class="setting" clickable @click="router.push('/dashboard')">
+    <GlassCard class="setting setting--tight" clickable @click="router.push('/dashboard')">
       <div class="row">
         <AppIcon name="ripple" :size="20" class="row__icon" />
         <div class="row__main">

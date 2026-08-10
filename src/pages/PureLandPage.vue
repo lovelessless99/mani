@@ -8,7 +8,7 @@
       <!-- The world / heaven, or Indra's net when reached and chosen -->
       <div class="pl__scene">
         <IndraNet v-if="netView" :colors="gemColors" />
-        <HeavenScene v-else :heaven="store.heaven" :build="store.build" :lamp-level="store.litLamps" />
+        <HeavenScene v-else :heaven="store.heaven" :build="store.build" :lamp-level="0" />
       </div>
 
       <!-- Heading over the sky -->
@@ -45,68 +45,25 @@
         </button>
       </div>
 
-      <!-- Bottom console: power, build, ascend -->
+      <!-- Bottom console: 功德 → 昇天 (automatic) -->
       <div class="pl__console">
         <template v-if="!netView">
-          <div class="pl__power">
-            <span class="pl__power-label">功德之力</span>
-            <div class="pl__power-bar">
-              <div class="pl__power-fill" :style="{ width: `${powerRatio * 100}%` }" />
-            </div>
-            <span class="pl__power-num tnum">{{ store.freePower }} / {{ store.totalPower }}</span>
+          <div class="pl__merit">
+            <span class="pl__merit-label">功德</span>
+            <span class="pl__merit-num tnum">{{ store.earned }}</span>
           </div>
 
-          <div class="pl__builds">
-            <div v-for="s in structureList" :key="s.type" class="pl__build">
-              <button
-                class="pl__build-btn"
-                type="button"
-                :disabled="!store.affordable(s.type)"
-                @click="place(s.type)"
-              >
-                <span class="pl__build-glyph">{{ s.glyph }}</span>
-                <span class="pl__build-name">{{ s.name }}</span>
-                <span class="pl__build-cost tnum">{{ s.cost }} 力</span>
-              </button>
-              <div class="pl__build-count">
-                <button
-                  class="pl__minus"
-                  type="button"
-                  :disabled="store.build[s.type] <= 0"
-                  @click="store.remove(s.type)"
-                >
-                  －
-                </button>
-                <span class="tnum">{{ store.build[s.type] }}</span>
-              </div>
-            </div>
-          </div>
-
-          <AppButton
-            v-if="store.canAscend"
-            variant="accent"
-            icon="sparkle"
-            block
-            class="pl__ascend"
-            @click="ascend"
-          >
-            昇天 · 上生{{ nextHeavenName }}
-          </AppButton>
-          <div v-else-if="store.tier < topIndex" class="pl__ascend-hint">
+          <div v-if="!store.atTop" class="pl__ascend-hint">
             <p class="tnum">
-              誦滿 {{ store.nextNeed }} 卷華嚴,可上生{{ nextHeavenName }}
-              <span class="t-faint">· 已誦 {{ store.huayanVols }} 卷</span>
+              再 {{ store.toNext }} 功德,自然上生{{ store.nextHeaven?.name }}
             </p>
             <div class="pl__ascend-bar">
               <div class="pl__ascend-fill" :style="{ width: `${store.ascendRatio * 100}%` }" />
             </div>
           </div>
-          <p v-else class="pl__consummate">✦ 已臻華藏,萬德圓具 ✦</p>
+          <p v-else class="pl__consummate">✦ 已臻究竟,萬德圓具 ✦</p>
 
           <div class="pl__extra">
-            <button class="pl__lamp-btn" type="button" @click="lampOpen = true">
-              🪔 無盡燈 · 寶庫
-            </button>
             <button v-if="store.atTop" class="pl__net-enter" type="button" @click="netView = true">
               ✦ 入因陀羅網 ✦
             </button>
@@ -118,19 +75,20 @@
         </button>
       </div>
 
-      <p v-if="!store.totalPower && !netView" class="pl__nopower">
-        寶石即功德之力 · 每念一品得一寶石,方能莊嚴此土
+      <p v-if="!store.earned && !netView" class="pl__nopower">
+        每誦一遍、背一段,皆得功德 · 功德自然莊嚴此土,漸次上生諸天
       </p>
     </template>
 
-    <!-- 諸天: jump to any heaven already reached -->
-    <AppSheet v-model="heavenListOpen" title="諸天" subtitle="回望已歷之天,重遊莊嚴">
+    <!-- 諸天圖: the whole ascent, with the 功德 each rung asks for -->
+    <AppSheet v-model="heavenListOpen" title="諸天圖" :subtitle="`累積功德 ${store.earned} · 已登第 ${store.maxTier} 天`">
       <ul class="hlist">
-        <li v-for="(h, i) in reachedHeavens" :key="h.id">
+        <li v-for="(h, i) in allHeavens" :key="h.id">
           <button
             class="hrow"
-            :class="{ 'hrow--on': i === store.tier }"
+            :class="{ 'hrow--on': i === store.tier, 'hrow--locked': i > store.maxTier }"
             type="button"
+            :disabled="i > store.maxTier"
             @click="jumpTo(i)"
           >
             <span class="hrow__idx tnum">{{ i }}</span>
@@ -139,76 +97,19 @@
                 <span class="hrow__name">{{ h.name }}</span>
                 <span class="hrow__realm">{{ h.realm }}</span>
                 <span v-if="i === store.tier" class="hrow__here">目前</span>
+                <span v-else-if="i > store.maxTier" class="hrow__lock">🔒</span>
               </span>
               <span class="hrow__cause">{{ h.cause }}</span>
+            </span>
+            <span class="hrow__merit tnum">
+              <template v-if="i === 0">起點</template>
+              <template v-else-if="i <= store.maxTier">{{ store.meritForTier(i) }} 功德</template>
+              <template v-else>需 {{ store.meritForTier(i) }}<span class="hrow__short"> · 尚缺 {{ store.meritForTier(i) - store.earned }}</span></template>
             </span>
           </button>
         </li>
       </ul>
-      <p v-if="store.maxTier < topIndex" class="hlist__hint">
-        誦華嚴、昇諸天,未至之天將次第顯現。
-      </p>
-    </AppSheet>
-
-    <!-- 無盡燈 · 寶庫: the teaching, the gems (with the day each was lit),
-         and the recycle controls for the current heaven. -->
-    <AppSheet v-model="lampOpen" title="無盡燈 · 寶庫" subtitle="一燈燃百千燈,冥者皆明,明終不盡">
-      <p class="lamp__sutra">
-        「譬如一燈,燃百千燈,冥者皆明,明終不盡。」——《維摩詰經·菩薩品》
-      </p>
-
-      <div class="lamp__stats">
-        <div class="lamp__stat">
-          <span class="lamp__stat-n tnum">{{ store.litLamps }}</span>
-          <span class="lamp__stat-l">已點之燈</span>
-        </div>
-        <div class="lamp__stat">
-          <span class="lamp__stat-n tnum">{{ store.totalPower }}</span>
-          <span class="lamp__stat-l">寶石功德力</span>
-        </div>
-        <div class="lamp__stat">
-          <span class="lamp__stat-n tnum">{{ store.spent }}</span>
-          <span class="lamp__stat-l">供入諸天</span>
-        </div>
-      </div>
-
-      <!-- 點燈: one lamp at a time, without end -->
-      <button class="lamp__light" type="button" @click="lightOne">
-        <span class="lamp__light-flame">🪔</span>
-        <span class="lamp__light-main">
-          <span class="lamp__light-t">點一盞燈</span>
-          <span class="lamp__light-s">一燈引燃無盡燈,冥者皆明</span>
-        </span>
-        <span class="lamp__light-plus">＋1</span>
-      </button>
-
-      <!-- Reclaim what is built on this heaven (undo a mis-tap) -->
-      <div v-if="store.tierValue > 0" class="lamp__reclaim">
-        <div>
-          <p class="lamp__reclaim-t">{{ store.heaven.name }} · 已建 {{ store.tierValue }} 之力</p>
-          <p class="lamp__reclaim-s">誤按了?可回收此天所有建造,力歸於燈</p>
-        </div>
-        <AppButton variant="glass" @click="reclaimTier">回收此天</AppButton>
-      </div>
-
-      <p class="section-label lamp__label">寶石 · 登記時日</p>
-      <p v-if="!gemDays.length" class="lamp__empty">尚無寶石。每念一品得一寶,燈自明。</p>
-      <ul v-else class="lamp__days">
-        <li v-for="d in gemDays" :key="d.date" class="lamp__day">
-          <div class="lamp__day-head">
-            <span class="lamp__day-date">{{ d.date }}</span>
-            <span class="lamp__day-count tnum">{{ d.gems.length }} 顆</span>
-          </div>
-          <div class="lamp__swatches">
-            <span
-              v-for="(g, i) in d.gems"
-              :key="i"
-              class="lamp__swatch"
-              :style="{ background: g }"
-            />
-          </div>
-        </li>
-      </ul>
+      <p class="hlist__hint">每誦一遍、背一段皆得一功德;功德到門檻,便自然上生。</p>
     </AppSheet>
 
     <!-- Rename the world -->
@@ -243,13 +144,7 @@ import AppSheet from 'src/components/ui/AppSheet.vue'
 import { useGemStore } from 'src/stores/gemStore'
 import { usePureLandStore } from 'src/stores/purelandStore'
 import { useProgressStore } from 'src/stores/progressStore'
-import {
-  useHeavenStore,
-  STRUCTURES,
-  HEAVENS,
-  type StructureType,
-} from 'src/stores/heavenStore'
-import { useChime } from 'src/composables/useChime'
+import { useHeavenStore, HEAVENS } from 'src/stores/heavenStore'
 import { useToast, describeError } from 'src/composables/useToast'
 import { getAllSutras } from 'src/services/sutraService'
 import chaptersData from 'src/data/meta/sutra-chapters.json'
@@ -264,54 +159,21 @@ const gemStore = useGemStore()
 const land = usePureLandStore()
 const store = useHeavenStore()
 const progressStore = useProgressStore()
-const chime = useChime()
 const toast = useToast()
 
 const loading = ref(true)
 const netView = ref(false)
-const lampOpen = ref(false)
 const heavenListOpen = ref(false)
 
-// Every heaven reached so far, for the jump menu.
-const reachedHeavens = computed(() => HEAVENS.slice(0, store.maxTier + 1))
+// The full ascent, for the 諸天圖.
+const allHeavens = HEAVENS
 
 function jumpTo(i: number) {
   store.goTo(i)
   heavenListOpen.value = false
 }
 
-async function lightOne() {
-  await store.lightLamp()
-  chime.strike(0.35)
-}
-
-// Gems grouped by the day each was earned — the 寶庫 ledger, so the timestamp
-// every gem carries is actually shown, newest day first. Keyed by ISO date so
-// the ordering is correct regardless of how the label is formatted.
-const gemDays = computed(() => {
-  const byDay = new Map<string, { label: string; gems: string[] }>()
-  for (const g of gemStore.gemsList) {
-    const d = new Date(g.earnedAt)
-    const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
-    const label = d.toLocaleDateString('zh-TW', { year: 'numeric', month: 'long', day: 'numeric' })
-    if (!byDay.has(key)) byDay.set(key, { label, gems: [] })
-    byDay.get(key)!.gems.push(g.params.colorHex)
-  }
-  return Array.from(byDay.entries())
-    .sort((a, b) => (a[0] < b[0] ? 1 : -1))
-    .map(([, v]) => ({ date: v.label, gems: v.gems }))
-})
-
-async function reclaimTier() {
-  await store.clearTier()
-  chime.strike(0.4)
-}
-
 const topIndex = HEAVENS.length - 1
-const structureList = (Object.keys(STRUCTURES) as StructureType[]).map((type) => ({
-  type,
-  ...STRUCTURES[type],
-}))
 
 const gemColors = computed(() => gemStore.gemsList.map((g) => g.params.colorHex))
 
@@ -331,25 +193,12 @@ const invited = computed<string[]>(() => {
   }
   return names
 })
-const powerRatio = computed(() =>
-  store.totalPower ? store.freePower / store.totalPower : 0
-)
-const nextHeavenName = computed(() => HEAVENS[Math.min(store.tier + 1, topIndex)]?.name ?? '')
-
 // A gradient from the current heaven's sky, painted behind the alpha canvas.
 const skyStyle = computed(() => {
   const sky = netView.value ? ['#20183a', '#07060f'] : store.heaven.sky
   const stops = sky.length >= 3 ? sky : [sky[0], sky[0], sky[1]]
   return { background: `linear-gradient(to bottom, ${stops.join(', ')})` }
 })
-
-async function place(type: StructureType) {
-  if (await store.place(type)) chime.strike(0.4)
-}
-
-async function ascend() {
-  if (await store.ascend()) chime.strike(1)
-}
 
 function go(t: number) {
   store.goTo(t)
@@ -378,7 +227,10 @@ async function saveName() {
 
 onMounted(async () => {
   try {
-    await Promise.all([gemStore.loadGems(), land.load(), store.load(), progressStore.loadAllProgress()])
+    // Progress first: the heaven's tier is derived from 功德 (practice totals),
+    // so load it before the heaven clamps its saved viewing tier.
+    await progressStore.loadAllProgress()
+    await Promise.all([gemStore.loadGems(), land.load(), store.load()])
   } catch (e) {
     toast.error(describeError(e))
   } finally {
@@ -550,6 +402,25 @@ onMounted(async () => {
   padding: 0 var(--s4);
   max-width: var(--content-max);
   margin: 0 auto;
+}
+
+.pl__merit {
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+  gap: var(--s2);
+  margin-bottom: var(--s3);
+}
+.pl__merit-label {
+  font-size: var(--text-micro);
+  letter-spacing: 0.2em;
+  color: var(--text-faint);
+}
+.pl__merit-num {
+  font-size: 1.5rem;
+  font-weight: 200;
+  color: #f0d79b;
+  text-shadow: 0 0 18px rgba(240, 215, 155, 0.45);
 }
 
 .pl__power {
@@ -790,9 +661,32 @@ onMounted(async () => {
   letter-spacing: 0.08em;
   color: var(--amber);
 }
+.hrow__lock {
+  font-size: 10px;
+}
 .hrow__cause {
   font-size: var(--text-micro);
   line-height: 1.5;
+  color: var(--text-faint);
+}
+.hrow__merit {
+  flex-shrink: 0;
+  align-self: center;
+  text-align: right;
+  font-size: var(--text-micro);
+  letter-spacing: 0.04em;
+  color: var(--amber);
+}
+.hrow--locked {
+  opacity: 0.5;
+}
+.hrow--locked .hrow__merit {
+  color: var(--text-faint);
+}
+.hrow--locked:hover {
+  background: rgba(255, 255, 255, 0.03);
+}
+.hrow__short {
   color: var(--text-faint);
 }
 .hlist__hint {

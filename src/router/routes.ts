@@ -14,6 +14,7 @@ const routes: RouteRecordRaw[] = [
       { path: 'library', component: () => import('pages/LibraryPage.vue') },
       { path: 'reader/:sutraId/:volumeId', component: () => import('pages/ReaderPage.vue') },
       { path: 'print', component: () => import('pages/PrintPage.vue') },
+      { path: 'guide', component: () => import('pages/GuidePage.vue') },
       { path: 'dashboard', component: () => import('pages/DashboardPage.vue') },
       { path: 'more', component: () => import('pages/MorePage.vue') },
     ],

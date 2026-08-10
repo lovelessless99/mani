@@ -20,11 +20,7 @@
 
           <Transition name="fade">
             <div v-if="revealed >= lines.length" class="ded__foot">
-              <p class="ded__merit tnum">
-                <template v-if="merit.recite">念經 {{ merit.recite }} 遍</template>
-                <template v-if="merit.recite && merit.memorize"> · </template>
-                <template v-if="merit.memorize">背誦 {{ merit.memorize }} 遍</template>
-              </p>
+              <p class="ded__merit tnum">迴向功德 {{ merit }} · 燈明不盡</p>
               <p class="ded__hint">點擊完成</p>
             </div>
           </Transition>
@@ -39,13 +35,12 @@
 
 <script setup lang="ts">
 import { ref, watch, onBeforeUnmount } from 'vue'
-import type { MeritTotals } from 'src/types/dedication'
 
 const props = defineProps<{
   open: boolean
   lines: string[]
   targetName: string
-  merit: MeritTotals
+  merit: number
 }>()
 
 const emit = defineEmits<{ done: [] }>()
