@@ -69,14 +69,15 @@ describe('heavenStore', () => {
     expect(store.maxTier).toBe(2)
   })
 
-  it('goTo clamps to the highest heaven opened', async () => {
-    setMerit(10)
+  it('opens on the highest heaven reached and goTo clamps to it', async () => {
+    setMerit(10) // opens tier 2
     const store = useHeavenStore()
     await store.load()
-    await store.goTo(5) // beyond maxTier (2) — ignored, stays at the saved 0
-    expect(store.tier).toBe(0)
-    await store.goTo(2) // at the ceiling — allowed
+    expect(store.tier).toBe(2) // load opens on the highest reached
+    await store.goTo(5) // beyond maxTier — ignored
     expect(store.tier).toBe(2)
+    await store.goTo(1) // look back at a lower heaven
+    expect(store.tier).toBe(1)
   })
 
   it('atTop only when merit has opened the final heaven', async () => {
