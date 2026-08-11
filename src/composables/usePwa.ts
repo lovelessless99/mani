@@ -19,6 +19,11 @@ type InstallEvent = Event & { prompt: () => Promise<void>; userChoice: Promise<{
 
 const deferredPrompt = ref<InstallEvent | null>(null)
 const installed = ref(false)
+// A newer service worker has taken control (autoUpdate skips waiting, so this
+// fires the moment the fresh version activates). The page still runs the old
+// assets until reloaded — so we surface a gentle "點此刷新" banner rather than
+// yanking the page out from under the reader.
+const updated = ref(false)
 
 function isStandalone(): boolean {
   return (
@@ -46,14 +51,28 @@ export function usePwa() {
     deferredPrompt.value = null
   }
 
+  // Only an *update* should nudge — not the first controller a fresh install
+  // acquires — so remember whether a worker was already in charge at mount.
+  let hadController = false
+  function onControllerChange() {
+    if (hadController) updated.value = true
+  }
+
   onMounted(() => {
     installed.value = isStandalone()
     window.addEventListener('beforeinstallprompt', onBeforePrompt)
     window.addEventListener('appinstalled', onInstalled)
+    if ('serviceWorker' in navigator) {
+      hadController = !!navigator.serviceWorker.controller
+      navigator.serviceWorker.addEventListener('controllerchange', onControllerChange)
+    }
   })
   onBeforeUnmount(() => {
     window.removeEventListener('beforeinstallprompt', onBeforePrompt)
     window.removeEventListener('appinstalled', onInstalled)
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.removeEventListener('controllerchange', onControllerChange)
+    }
   })
 
   async function install(): Promise<void> {
@@ -69,12 +88,18 @@ export function usePwa() {
     void updateServiceWorker(true)
   }
 
+  function reloadForUpdate(): void {
+    window.location.reload()
+  }
+
   return {
     canInstall: readonly(canInstall),
     installed: readonly(installed),
     needRefresh,
+    updated: readonly(updated),
     install,
     applyUpdate,
+    reloadForUpdate,
     isStandalone,
   }
 }

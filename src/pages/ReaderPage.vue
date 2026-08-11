@@ -273,14 +273,41 @@ function installTap() {
   const doc = idoc()
   if (!doc || tapInstalled) return
   tapInstalled = true
-  doc.addEventListener('click', (e: MouseEvent) => {
-    if (panelShown.value) return
-    const w = doc.defaultView?.innerWidth || window.innerWidth
-    const leftHalf = e.clientX < w / 2
-    const phone = window.innerWidth < 768
-    const next = phone ? !leftHalf : leftHalf
-    iwin()?.__readerFlip?.(next ? 'next' : 'prev')
-  })
+  // Flip on pointer *up*, not `click`: a synthesised click waits to rule out a
+  // double-tap/drag and feels laggy on touch, and any small finger travel can
+  // swallow it entirely. Firing on release — after rejecting drags and
+  // long-presses — turns the page the instant the finger lifts.
+  let sx = 0
+  let sy = 0
+  let st = 0
+  let tracking = false
+  doc.addEventListener(
+    'pointerdown',
+    (e: PointerEvent) => {
+      if (panelShown.value) return
+      tracking = true
+      sx = e.clientX
+      sy = e.clientY
+      st = e.timeStamp
+    },
+    { passive: true },
+  )
+  doc.addEventListener(
+    'pointerup',
+    (e: PointerEvent) => {
+      if (!tracking) return
+      tracking = false
+      if (panelShown.value) return
+      const moved = Math.abs(e.clientX - sx) + Math.abs(e.clientY - sy)
+      if (moved > 12 || e.timeStamp - st > 700) return // a drag or long-press, not a tap
+      const w = doc.defaultView?.innerWidth || window.innerWidth
+      const leftHalf = e.clientX < w / 2
+      const phone = window.innerWidth < 768
+      const next = phone ? !leftHalf : leftHalf
+      iwin()?.__readerFlip?.(next ? 'next' : 'prev')
+    },
+    { passive: true },
+  )
 }
 
 // Draggable progress bar → jump to any page.

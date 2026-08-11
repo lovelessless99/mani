@@ -18,15 +18,15 @@
         <h1 class="ded__title">迴向</h1>
         <p class="ded__balance"><b class="tnum">{{ merit.balance }}</b> 功德可迴向</p>
         <p v-if="store.history.length" class="ded__tally tnum">
-          燈海 · {{ store.history.length }} 盞 · 共 {{ store.totalGiven }} 功德
+          星空 · {{ store.history.length }} 顆 · 共 {{ store.totalGiven }} 功德
         </p>
-        <p class="ded__hint">拖曳畫面環視河燈</p>
+        <p class="ded__hint">拖曳畫面環視你的迴向星空</p>
       </div>
-      <button class="ded__light" type="button" @click="sheetOpen = true">🪔 點一盞迴向燈</button>
+      <button class="ded__light" type="button" @click="sheetOpen = true">✦ 點亮一顆迴向星</button>
     </div>
 
     <!-- Controls sheet -->
-    <AppSheet v-model="sheetOpen" title="點迴向燈" :subtitle="`功德 ${merit.balance} 可迴向`">
+    <AppSheet v-model="sheetOpen" title="點亮迴向星" :subtitle="`功德 ${merit.balance} 可迴向`">
       <!-- 立願 -->
       <div v-if="vow.active" class="vow vow--sheet">
         <div class="vow__head">
@@ -112,6 +112,7 @@ import DedicationCeremony from 'src/components/DedicationCeremony.vue'
 import LanternRiver from 'src/components/LanternRiver.vue'
 import { useProgressStore } from 'src/stores/progressStore'
 import { useMeritStore } from 'src/stores/meritStore'
+import { useChantStore } from 'src/stores/chantStore'
 import { useDedicationStore } from 'src/stores/dedicationStore'
 import { useVowStore } from 'src/stores/vowStore'
 import { useToast, describeError } from 'src/composables/useToast'
@@ -135,6 +136,7 @@ const targets = versesData.targets as Target[]
 
 const progressStore = useProgressStore()
 const merit = useMeritStore()
+const chant = useChantStore()
 const store = useDedicationStore()
 const vow = useVowStore()
 const toast = useToast()
@@ -242,7 +244,7 @@ function finish() {
 
 onMounted(async () => {
   try {
-    await Promise.all([progressStore.loadAllProgress(), merit.load(), store.loadDedications(), vow.load()])
+    await Promise.all([progressStore.loadAllProgress(), merit.load(), chant.load(), store.loadDedications(), vow.load()])
   } catch (e) {
     toast.error(describeError(e))
   }

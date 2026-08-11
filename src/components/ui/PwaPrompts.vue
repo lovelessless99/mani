@@ -1,6 +1,6 @@
 <template>
   <Teleport to="body">
-    <!-- New version waiting -->
+    <!-- New version waiting (prompt-mode registrations) -->
     <Transition name="pwa">
       <div v-if="needRefresh" class="pwa pwa--update">
         <div class="pwa__text">
@@ -9,6 +9,20 @@
         </div>
         <button class="pwa__btn" type="button" @click="applyUpdate">立即更新</button>
         <button class="pwa__x" type="button" aria-label="稍後" @click="needRefresh = false">
+          <AppIcon name="close" :size="16" />
+        </button>
+      </div>
+    </Transition>
+
+    <!-- New version already active — offer a refresh to load it -->
+    <Transition name="pwa">
+      <div v-if="updated && !refreshDismissed" class="pwa pwa--update">
+        <div class="pwa__text">
+          <p class="pwa__title">已更新到新版本</p>
+          <p class="pwa__sub">重新整理即可使用最新內容</p>
+        </div>
+        <button class="pwa__btn" type="button" @click="reloadForUpdate">刷新</button>
+        <button class="pwa__x" type="button" aria-label="稍後" @click="refreshDismissed = true">
           <AppIcon name="close" :size="16" />
         </button>
       </div>
@@ -36,11 +50,12 @@ import { ref, computed } from 'vue'
 import AppIcon from './AppIcon.vue'
 import { usePwa } from 'src/composables/usePwa'
 
-const { canInstall, needRefresh, install, applyUpdate } = usePwa()
+const { canInstall, needRefresh, updated, install, applyUpdate, reloadForUpdate } = usePwa()
 
 // Respect a dismissal for the session so the banner is not nagging.
 const DISMISS_KEY = 'pwa-install-dismissed'
 const dismissed = ref(sessionStorage.getItem(DISMISS_KEY) === '1')
+const refreshDismissed = ref(false)
 
 const showInstall = computed(() => canInstall.value && !dismissed.value && !needRefresh.value)
 

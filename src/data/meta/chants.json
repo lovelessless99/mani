@@ -1,0 +1,27 @@
+{
+  "mantras": [
+    { "id": "dabei", "name": "大悲咒", "target": 7 },
+    { "id": "lengyan", "name": "楞嚴咒", "target": 7 },
+    { "id": "baofumu", "name": "報父母恩咒", "target": 108 },
+    { "id": "miedingye", "name": "地藏菩薩滅定業真言", "target": 108 },
+    { "id": "dizang-xin", "name": "地藏菩薩心咒", "target": 108 },
+    { "id": "wangsheng", "name": "往生咒", "target": 108 },
+    { "id": "qifo", "name": "七佛滅罪真言", "target": 108 },
+    { "id": "yaoshi", "name": "藥師灌頂真言", "target": 108 },
+    { "id": "wenshu-xin", "name": "文殊菩薩心咒", "target": 108 },
+    { "id": "baiziming", "name": "百字明咒", "target": 21 }
+  ],
+  "names": [
+    { "id": "n-shijia", "name": "南無本師釋迦牟尼佛", "target": 108 },
+    { "id": "n-amituo", "name": "南無阿彌陀佛", "target": 108 },
+    { "id": "n-yaoshi", "name": "南無藥師琉璃光如來", "target": 108 },
+    { "id": "n-piluzhena", "name": "南無毘盧遮那佛", "target": 108 },
+    { "id": "n-lianhua", "name": "南無蓮華光遊戲神通佛", "target": 108 },
+    { "id": "n-jingjin", "name": "南無大強勇猛精進佛", "target": 108 },
+    { "id": "n-dizang", "name": "南無地藏王菩薩", "target": 108 },
+    { "id": "n-guanyin", "name": "南無觀世音菩薩", "target": 108 },
+    { "id": "n-dashizhi", "name": "南無大勢至菩薩", "target": 108 },
+    { "id": "n-puxian", "name": "南無普賢菩薩", "target": 108 },
+    { "id": "n-wenshu", "name": "南無文殊師利菩薩", "target": 108 }
+  ]
+}

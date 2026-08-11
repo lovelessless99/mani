@@ -210,10 +210,26 @@ onMounted(async () => {
     ])
     // Refresh the evening reminder each visit (where the browser can schedule).
     void notify.scheduleDaily()
+    // Wherever a scheduled notification can't reach (most browsers when the
+    // app is closed), an in-app nudge carries the reminder on the next visit —
+    // once a day, and only while today's course is still unfinished.
+    maybeNudgeDaily()
   } catch (e) {
     toast.error(describeError(e))
   }
 })
+
+function maybeNudgeDaily() {
+  if (!notify.enabled.value || !taskPending.value) return
+  const today = new Date().toDateString()
+  try {
+    if (localStorage.getItem('daily-nudge-shown') === today) return
+    localStorage.setItem('daily-nudge-shown', today)
+  } catch {
+    // storage unavailable; the nudge simply may repeat
+  }
+  toast.info('今日功課尚未圓滿,抽一張,修一分 🙏')
+}
 </script>
 
 <style scoped>

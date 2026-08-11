@@ -1,6 +1,6 @@
 <template>
   <div
-    class="river"
+    class="sky"
     @pointerdown="onDown"
     @pointermove="onMove"
     @pointerup="onUp"
@@ -8,12 +8,11 @@
     @pointerleave="onUp"
   >
     <TresCanvas clear-color="#05070f" :antialias="true" :alpha="false">
-      <TresPerspectiveCamera ref="camRef" :position="CAM" :fov="56" :look-at="lookAt" />
+      <TresPerspectiveCamera ref="camRef" :position="CAM" :fov="58" :look-at="lookAt" />
 
-      <TresAmbientLight :intensity="0.45" color="#54689e" />
-      <TresDirectionalLight :position="[2, 6, 3]" :intensity="0.3" color="#9fb6ff" />
+      <TresAmbientLight :intensity="0.5" color="#54689e" />
 
-      <!-- Stars, constellations, moon -->
+      <!-- Star field, ambient 星宿, low moon -->
       <primitive :object="starField" />
       <primitive :object="constellations" />
       <TresMesh :position="LIGHT">
@@ -33,7 +32,7 @@
         />
       </TresMesh>
 
-      <!-- Shader sea -->
+      <!-- Shader sea with a moonlit road (as the home ocean) -->
       <TresMesh :rotation="[-Math.PI / 2, 0, 0]" :position="[0, 0, 0]">
         <TresPlaneGeometry :args="[460, 460, 300, 300]" />
         <TresShaderMaterial
@@ -45,31 +44,59 @@
         />
       </TresMesh>
 
-      <!-- Floating light orbs (one per lamp) -->
-      <TresGroup v-for="l in lanterns" :key="l.id" :position="place(l)">
-        <TresMesh :position="[0, 0.01, 0]" :rotation="[-Math.PI / 2, 0, 0]" :scale="[ripple(l), ripple(l), 1]">
-          <TresRingGeometry :args="[0.4, 0.48, 24]" />
-          <TresMeshBasicMaterial :color="l.glow" :transparent="true" :opacity="rippleFade(l)" :depth-write="false" />
+      <!-- Every dedication is its OWN small constellation (one of the 88 星宿),
+           scattered across the sky and never joined to another. -->
+      <TresGroup v-for="f in dedFigures" :key="f.id">
+        <TresMesh
+          v-for="(lk, i) in f.links"
+          :key="`${f.id}-l${i}`"
+          :position="lk.pos"
+          :rotation="lk.rot"
+          :scale="[1, lk.len, 1]"
+        >
+          <TresCylinderGeometry :args="[0.05, 0.05, 1, 6, 1, true]" />
+          <TresMeshBasicMaterial
+            color="#c2d4ff"
+            :transparent="true"
+            :opacity="0.26"
+            :depth-write="false"
+            :blending="AdditiveBlending"
+            :tone-mapped="false"
+          />
         </TresMesh>
-        <!-- glowing orb — beats like a heartbeat -->
-        <TresMesh :position="[0, 0.22, 0]" :scale="beat(l) * (l.id === selectedId ? 1.3 : 1)">
-          <TresSphereGeometry :args="[0.24, 20, 18]" />
-          <TresMeshBasicMaterial :color="l.glow" :transparent="true" :opacity="0.85" :tone-mapped="false" />
+        <TresGroup v-for="(s, i) in f.stars" :key="`${f.id}-s${i}`" :position="s.p">
+          <!-- soft glow, only on the figure's few bright stars -->
+          <TresMesh v-if="s.bright" :scale="glowScale(f)">
+            <TresSphereGeometry :args="[0.5, 16, 14]" />
+            <TresMeshBasicMaterial :color="f.glow" :transparent="true" :opacity="0.34" :depth-write="false" :tone-mapped="false" />
+          </TresMesh>
+          <TresMesh :scale="s.bright ? coreScale(f) : 1">
+            <TresSphereGeometry :args="[s.bright ? 0.16 : 0.09, 12, 10]" />
+            <TresMeshBasicMaterial
+              :color="s.bright ? '#fff6de' : '#aebbd8'"
+              :transparent="!s.bright"
+              :opacity="s.bright ? 1 : 0.7"
+              :tone-mapped="false"
+            />
+          </TresMesh>
+        </TresGroup>
+      </TresGroup>
+
+      <!-- Occasional shooting stars streaking across the sky -->
+      <TresGroup v-for="m in meteors" :key="m.id">
+        <TresMesh :position="m.mid" :rotation="m.rot">
+          <TresCylinderGeometry :args="[0.34, 0.02, m.trail, 5, 1, true]" />
+          <TresMeshBasicMaterial :color="m.color" :transparent="true" :opacity="m.opacity" :depth-write="false" :blending="AdditiveBlending" :tone-mapped="false" />
         </TresMesh>
-        <TresMesh :position="[0, 0.22, 0]" :scale="beat(l) * (l.id === selectedId ? 1.3 : 1)">
-          <TresSphereGeometry :args="[0.12, 12, 12]" />
-          <TresMeshBasicMaterial color="#fff6de" :tone-mapped="false" />
-        </TresMesh>
-        <!-- reflection -->
-        <TresMesh :position="[0, -0.55, 0.02]">
-          <TresPlaneGeometry :args="[0.34, 1.4]" />
-          <TresMeshBasicMaterial :color="l.glow" :transparent="true" :opacity="0.32" :depth-write="false" />
+        <TresMesh :position="m.head">
+          <TresSphereGeometry :args="[0.75, 10, 8]" />
+          <TresMeshBasicMaterial :color="m.color" :transparent="true" :opacity="m.opacity" :depth-write="false" :tone-mapped="false" />
         </TresMesh>
       </TresGroup>
 
       <Suspense>
         <EffectComposerPmndrs>
-          <BloomPmndrs :intensity="0.85" :luminance-threshold="0.6" :luminance-smoothing="0.5" :mipmap-blur="true" :radius="0.72" />
+          <BloomPmndrs :intensity="0.9" :luminance-threshold="0.58" :luminance-smoothing="0.5" :mipmap-blur="true" :radius="0.72" />
         </EffectComposerPmndrs>
       </Suspense>
     </TresCanvas>
@@ -86,6 +113,8 @@ import {
   BufferGeometry,
   BufferAttribute,
   Vector3,
+  Quaternion,
+  Euler,
   Color,
   CanvasTexture,
   AdditiveBlending,
@@ -110,10 +139,11 @@ const LIGHT: [number, number, number] = [0, 34, -520]
 const CAM: [number, number, number] = [0, 1.2, 3.5]
 const camRef = shallowRef<{ instance?: PerspectiveCamera } | PerspectiveCamera | null>(null)
 const TAU = Math.PI * 2
+const YUP = new Vector3(0, 1, 0)
 
-// — First-person look, exactly as the home sea: yaw turns a full circle —
+// — First-person look: yaw turns a full circle, sky fills ~two-thirds —
 const yaw = ref(0)
-const pitch = ref(0.3) // look up a touch so the sky fills ~two-thirds
+const pitch = ref(0.3)
 const PITCH_MIN = -0.15
 const PITCH_MAX = 0.85
 const lookAt = computed<[number, number, number]>(() => {
@@ -125,13 +155,11 @@ let velPitch = 0
 let dragging = false
 let lastX = 0
 let lastY = 0
-let downX = 0
-let downY = 0
 let moved = 0
 function onDown(e: PointerEvent) {
   dragging = true
-  lastX = downX = e.clientX
-  lastY = downY = e.clientY
+  lastX = e.clientX
+  lastY = e.clientY
   moved = 0
   velYaw = velPitch = 0
   ;(e.currentTarget as Element).setPointerCapture?.(e.pointerId)
@@ -166,23 +194,23 @@ function tapSelect(e: PointerEvent) {
   const rect = host.getBoundingClientRect()
   const px = e.clientX - rect.left
   const py = e.clientY - rect.top
-  let best: Lantern | null = null
-  let bestD = 70
-  for (const l of lanterns.value) {
-    const p = new Vector3(...place(l)).project(cam)
+  let bestId: string | null = null
+  let bestD = 80
+  for (const s of tapStars.value) {
+    const p = s.v.clone().project(cam)
     if (p.z > 1) continue
     const sx = (p.x * 0.5 + 0.5) * rect.width
     const sy = (-p.y * 0.5 + 0.5) * rect.height
     const d = Math.hypot(sx - px, sy - py)
     if (d < bestD) {
       bestD = d
-      best = l
+      bestId = s.id
     }
   }
-  if (best) emit('select', best.id)
+  if (bestId) emit('select', bestId)
 }
 
-// — Stars & moon glow (home sea) —————————————————————
+// — Background star field (upper hemisphere, above the water) ——————
 function buildStars(): Points {
   const COUNT = 1400
   const pos = new Float32Array(COUNT * 3)
@@ -234,11 +262,9 @@ function makeGlow(): CanvasTexture {
 const starField = shallowRef(buildStars())
 const glowTexture = shallowRef(makeGlow())
 
-// — Constellations: elegant thin lines + soft-glowing stars ——————
+// — Ambient 星宿: elegant thin lines + soft-glowing stars, a quiet backdrop —
 type Figure = { s: number[][]; l: number[][]; m: number[] }
 const FIGS = figuresData as unknown as Record<string, Figure>
-const YUP = new Vector3(0, 1, 0)
-// Each constellation animates its own lines, so every line owns its material.
 interface FigureAnim {
   mats: MeshBasicMaterial[]
   phase: number
@@ -259,7 +285,6 @@ function makeStarGlow(): CanvasTexture {
   return tex
 }
 const starGlowTex = makeStarGlow()
-// Pick a fresh handful of the 88 星宿 each time the scene loads.
 function pickFigures(count: number): string[] {
   const keys = Object.keys(FIGS).filter((k) => FIGS[k]?.s?.length && FIGS[k]?.l?.length)
   for (let i = keys.length - 1; i > 0; i--) {
@@ -271,18 +296,18 @@ function pickFigures(count: number): string[] {
 function buildConstellations(): Group {
   const g = new Group()
   figureAnims.length = 0
-  const R = 820
-  const chosen = pickFigures(8)
+  const R = 900
+  const chosen = pickFigures(6)
   chosen.forEach((key, idx) => {
     const fig = FIGS[key]
     if (!fig || !fig.s?.length) return
     const az = (idx / chosen.length) * TAU + 0.2
-    const el = 0.28 + ((idx * 2) % 3) * 0.14
+    const el = 0.3 + ((idx * 2) % 3) * 0.16
     const dir = new Vector3(Math.cos(el) * Math.sin(az), Math.sin(el), -Math.cos(el) * Math.cos(az)).multiplyScalar(R)
     const forward = dir.clone().negate().normalize()
     const right = new Vector3().crossVectors(YUP, forward).normalize()
     const up2 = new Vector3().crossVectors(forward, right).normalize()
-    const S = 140
+    const S = 150
     const pts = fig.s.map(([x, y]) =>
       dir
         .clone()
@@ -295,15 +320,13 @@ function buildConstellations(): Group {
       const B = pts[b]
       if (!A || !B) return
       const seg = B.clone().sub(A)
-      const mat = new MeshBasicMaterial({ color: 0xcadcff, transparent: true, opacity: 0.14, blending: AdditiveBlending, depthWrite: false, toneMapped: false })
+      const mat = new MeshBasicMaterial({ color: 0xb9cdff, transparent: true, opacity: 0.1, blending: AdditiveBlending, depthWrite: false, toneMapped: false })
       const m = new Mesh(new CylinderGeometry(0.9, 0.9, seg.length(), 5, 1, true), mat)
       m.position.copy(A).add(B).multiplyScalar(0.5)
       m.quaternion.setFromUnitVectors(YUP, seg.normalize())
       g.add(m)
       mats.push(mat)
     })
-    if (mats.length) figureAnims.push({ mats, phase: Math.random() })
-    // soft-glowing stars — brighter for the marked ones
     const sharp: number[] = []
     const glow: number[] = []
     pts.forEach((p, i) => {
@@ -312,18 +335,19 @@ function buildConstellations(): Group {
     })
     const sg = new BufferGeometry()
     sg.setAttribute('position', new BufferAttribute(new Float32Array(sharp), 3))
-    g.add(new Points(sg, new PointsMaterial({ color: 0xf2f6ff, size: 2.4, sizeAttenuation: false, transparent: true, opacity: 0.95, blending: AdditiveBlending, depthWrite: false, toneMapped: false })))
+    g.add(new Points(sg, new PointsMaterial({ color: 0xdfe8ff, size: 2.2, sizeAttenuation: false, transparent: true, opacity: 0.8, blending: AdditiveBlending, depthWrite: false, toneMapped: false })))
     if (glow.length) {
       const gg = new BufferGeometry()
       gg.setAttribute('position', new BufferAttribute(new Float32Array(glow), 3))
-      g.add(new Points(gg, new PointsMaterial({ map: starGlowTex, color: 0xdfe9ff, size: 14, sizeAttenuation: false, transparent: true, opacity: 0.85, blending: AdditiveBlending, depthWrite: false, toneMapped: false })))
+      g.add(new Points(gg, new PointsMaterial({ map: starGlowTex, color: 0xcfe0ff, size: 12, sizeAttenuation: false, transparent: true, opacity: 0.7, blending: AdditiveBlending, depthWrite: false, toneMapped: false })))
     }
+    if (mats.length) figureAnims.push({ mats, phase: Math.random() })
   })
   return g
 }
 const constellations = shallowRef(buildConstellations())
 
-// — Sea shader (home sea) ————————————————————————
+// — Sea shader (home ocean): swell + moonlit specular glitter ——————
 const uniforms = {
   uTime: { value: 0 },
   uLight: { value: new Vector3(...LIGHT) },
@@ -384,8 +408,8 @@ const fragmentShader = /* glsl */ `
   }
 `
 
-// — Orbs scattered all around, so a full turn always meets more lanterns —
-const MAX = 30
+// — Dedications as stars, placed along a wandering path across the sky ————
+const DOME = 60
 function hash(s: string): number {
   let h = 2166136261
   for (let i = 0; i < s.length; i++) {
@@ -394,59 +418,171 @@ function hash(s: string): number {
   }
   return (h >>> 0) / 4294967295
 }
-interface Lantern {
+const FIG_S = 9
+const FIG_KEYS = Object.keys(FIGS).filter((k) => FIGS[k]?.s?.length && FIGS[k]?.l?.length)
+// Pale, lightly-varied glow tints — each figure lit a slightly different hue.
+const STAR_TINTS = ['#dfeaff', '#fff0d6', '#e2fbff', '#f2e6ff', '#e6fff0', '#ffe9ef']
+// Chronological order (oldest first), so newer dedications land in fresh sky.
+const ordered = computed(() =>
+  [...props.lamps].sort((a, b) => String((a as Lamp & { dedicatedAt?: string }).dedicatedAt ?? '').localeCompare(String((b as Lamp & { dedicatedAt?: string }).dedicatedAt ?? '')))
+)
+
+interface DedFigure {
   id: string
-  x: number
-  z: number
-  bob: number
-  phase: number
   glow: string
+  phase: number
+  stars: { p: [number, number, number]; bright: boolean }[]
+  links: { pos: [number, number, number]; rot: [number, number, number]; len: number }[]
 }
-const lanterns = computed<Lantern[]>(() => {
-  const list = props.lamps.slice(0, MAX)
-  const n = Math.max(1, list.length)
-  return list.map((lamp, i) => {
+// Each dedication is drawn as one whole 星宿 figure of its own — placed by a
+// golden-angle spacing so they scatter evenly and never touch one another.
+const dedFigures = computed<DedFigure[]>(() =>
+  ordered.value.slice(0, 60).map((lamp, i) => {
     const r1 = hash(lamp.id)
-    const r2 = hash(lamp.id + '·z')
-    const ang = ((i + r1) / n) * TAU
-    const rad = 3.2 + r2 * 5.5
-    const pal = PALETTES[Math.floor(hash(lamp.id + '·c') * PALETTES.length) % PALETTES.length]
+    const r2 = hash(lamp.id + '·e')
+    const az = i * 2.399963 + (r1 - 0.5) * 0.25
+    let el = 0.36 + ((i * 0.61803) % 1) * 0.5 + (r2 - 0.5) * 0.1
+    el = Math.max(0.22, Math.min(1.02, el))
+    const ce = Math.cos(el)
+    const center = new Vector3(ce * Math.sin(az) * DOME, Math.sin(el) * DOME, -ce * Math.cos(az) * DOME)
+    const forward = center.clone().negate().normalize()
+    const right = new Vector3().crossVectors(YUP, forward).normalize()
+    const up = new Vector3().crossVectors(forward, right).normalize()
+    const fig = FIGS[FIG_KEYS[Math.floor(hash(lamp.id + '·f') * FIG_KEYS.length) % FIG_KEYS.length]]
+    const rot = hash(lamp.id + '·r') * TAU
+    const cr = Math.cos(rot)
+    const sr = Math.sin(rot)
+    const pts = fig.s.map(([x, y]) => {
+      const lx = ((x - 50) / 100) * FIG_S
+      const ly = (-(y - 50) / 100) * FIG_S
+      const rx = lx * cr - ly * sr
+      const ry = lx * sr + ly * cr
+      return center.clone().add(right.clone().multiplyScalar(rx)).add(up.clone().multiplyScalar(ry))
+    })
+    const links = (fig.l ?? []).flatMap(([a, b]) => {
+      const A = pts[a]
+      const B = pts[b]
+      if (!A || !B) return []
+      const seg = B.clone().sub(A)
+      const len = seg.length()
+      if (len < 0.001) return []
+      const mid = A.clone().add(B).multiplyScalar(0.5)
+      const q = new Quaternion().setFromUnitVectors(YUP, seg.clone().normalize())
+      const e = new Euler().setFromQuaternion(q)
+      return [{ pos: [mid.x, mid.y, mid.z] as [number, number, number], rot: [e.x, e.y, e.z] as [number, number, number], len }]
+    })
+    // Only a few "bright" stars glow (real constellations aren't strung with
+    // beads of light); the rest are faint points. Guarantee at least one.
+    const bright = new Set<number>(fig.m && fig.m.length ? fig.m : [0])
     return {
       id: lamp.id,
-      x: Math.cos(ang) * rad,
-      z: Math.sin(ang) * rad,
-      bob: 0.5 + r1 * 0.7,
-      phase: r2 * TAU,
-      glow: pal,
+      glow: STAR_TINTS[Math.floor(hash(lamp.id + '·c') * STAR_TINTS.length) % STAR_TINTS.length],
+      phase: r1 * TAU,
+      stars: pts.map((p, idx) => ({ p: [p.x, p.y, p.z] as [number, number, number], bright: bright.has(idx) })),
+      links,
     }
   })
-})
-const PALETTES = ['#ff9ec0', '#ffd27a', '#9fd0ff', '#c6a3ff', '#87e6c0', '#ff9a86', '#f2f2ff']
+)
 
+// Flat list of every star, tagged with its dedication, for tap-picking.
+const tapStars = computed(() =>
+  dedFigures.value.flatMap((f) => f.stars.map((s) => ({ v: new Vector3(s.p[0], s.p[1], s.p[2]), id: f.id })))
+)
+
+// A gentle twinkle in brightness/size, each figure on its own phase.
+function twinkle(phase: number): number {
+  return 1 + Math.sin(t.value * 2.4 + phase) * 0.12
+}
+function glowScale(f: DedFigure): number {
+  return twinkle(f.phase) * (f.id === props.selectedId ? 1.7 : 1)
+}
+function coreScale(f: DedFigure): number {
+  return f.id === props.selectedId ? 1.6 : 1
+}
+
+// — Occasional shooting stars ————————————————————————
+interface Meteor {
+  id: number
+  rot: [number, number, number]
+  color: string
+  px: number
+  py: number
+  pz: number
+  vx: number
+  vy: number
+  vz: number
+  t0: number
+  dur: number
+  travel: number
+  trail: number
+  mid: [number, number, number]
+  head: [number, number, number]
+  opacity: number
+}
+const meteors = ref<Meteor[]>([])
+let meteorId = 0
+let nextMeteorAt = 10
+function spawnMeteor(now: number) {
+  // Aim into the current (narrow, portrait) view — a touch above centre so the
+  // streak falls down through it — else meteors sweep unseen off to the side.
+  const az = yaw.value + (Math.random() - 0.5) * 0.7
+  const el = Math.max(0.18, Math.min(1.0, pitch.value + 0.22 + (Math.random() - 0.5) * 0.45))
+  const R = 220
+  const ce = Math.cos(el)
+  const px = ce * Math.sin(az) * R
+  const py = Math.sin(el) * R
+  const pz = -ce * Math.cos(az) * R
+  // Sweep across the sky (tangent to the dome), biased downward.
+  const dir = new Vector3(px, py, pz).normalize()
+  const v = new Vector3(Math.random() - 0.5, -0.6 - Math.random() * 0.5, Math.random() - 0.5)
+  v.addScaledVector(dir, -v.dot(dir)).normalize()
+  const e = new Euler().setFromQuaternion(new Quaternion().setFromUnitVectors(YUP, v))
+  meteors.value.push({
+    id: meteorId++,
+    rot: [e.x, e.y, e.z],
+    color: Math.random() < 0.3 ? '#dff0ff' : '#fff4e0',
+    px,
+    py,
+    pz,
+    vx: v.x,
+    vy: v.y,
+    vz: v.z,
+    t0: now,
+    dur: 0.6 + Math.random() * 0.45,
+    travel: 130 + Math.random() * 90,
+    trail: 16 + Math.random() * 12,
+    mid: [px, py, pz],
+    head: [px, py, pz],
+    opacity: 0,
+  })
+}
+function stepMeteors(elapsed: number) {
+  if (elapsed > nextMeteorAt) {
+    spawnMeteor(elapsed)
+    nextMeteorAt = elapsed + 32 + Math.random() * 40
+  }
+  // Mutate each meteor in place and splice only the dead — never swap the whole
+  // array, so TresJS keeps the meshes alive long enough to actually draw them.
+  const arr = meteors.value
+  for (let i = arr.length - 1; i >= 0; i--) {
+    const m = arr[i]
+    const f = (elapsed - m.t0) / m.dur
+    if (f >= 1) {
+      arr.splice(i, 1)
+      continue
+    }
+    const d = f * m.travel
+    const hx = m.px + m.vx * d
+    const hy = m.py + m.vy * d
+    const hz = m.pz + m.vz * d
+    m.head = [hx, hy, hz]
+    m.mid = [hx - (m.vx * m.trail) / 2, hy - (m.vy * m.trail) / 2, hz - (m.vz * m.trail) / 2]
+    m.opacity = Math.sin(Math.max(0, Math.min(1, f)) * Math.PI) * 0.9
+  }
+}
+
+// — Clock: drives the twinkle, the sea, and the ambient shimmer ————
 const t = ref(0)
-function place(l: Lantern): [number, number, number] {
-  const x = l.x + Math.sin(t.value * 0.3 + l.phase) * 0.1
-  const y = 0.02 + Math.sin(t.value * l.bob + l.phase) * 0.03
-  const z = l.z + Math.cos(t.value * 0.28 + l.phase) * 0.09
-  return [x, y, z]
-}
-// Heartbeat: two quick swells (lub-dub) then rest, each orb offset by its phase.
-function beat(l: Lantern): number {
-  const period = 1.5
-  const x = (((t.value / period + l.phase) % 1) + 1) % 1
-  const lub = Math.exp(-Math.pow(x / 0.07, 2))
-  const dub = 0.6 * Math.exp(-Math.pow((x - 0.2) / 0.07, 2))
-  return 1 + (lub + dub) * 0.2
-}
-function ripple(l: Lantern): number {
-  const p = ((t.value * 0.4 + l.phase) % TAU) / TAU
-  return 0.5 + p * 2.2
-}
-function rippleFade(l: Lantern): number {
-  const p = ((t.value * 0.4 + l.phase) % TAU) / TAU
-  return 0.18 * (1 - p)
-}
-
 let raf = 0
 let startedAt = 0
 function tick(now: number) {
@@ -454,7 +590,7 @@ function tick(now: number) {
   const elapsed = (now - startedAt) / 1000
   t.value = elapsed
   uniforms.uTime.value = elapsed
-  // A bright pulse travels the length of each constellation and loops.
+  stepMeteors(elapsed)
   for (const fa of figureAnims) {
     const count = fa.mats.length
     const loop = 4.5
@@ -462,7 +598,7 @@ function tick(now: number) {
     for (let i = 0; i < count; i++) {
       let d = Math.abs(i - head)
       d = Math.min(d, count - d)
-      fa.mats[i].opacity = 0.13 + Math.exp(-(d * d) / 1.6) * 0.55
+      fa.mats[i].opacity = 0.09 + Math.exp(-(d * d) / 1.6) * 0.4
     }
   }
   if (!dragging && (Math.abs(velYaw) > 2e-5 || Math.abs(velPitch) > 2e-5)) {
@@ -491,13 +627,13 @@ onBeforeUnmount(() => {
 </script>
 
 <style scoped>
-.river {
+.sky {
   position: absolute;
   inset: 0;
   touch-action: none;
   cursor: grab;
 }
-.river:active {
+.sky:active {
   cursor: grabbing;
 }
 </style>

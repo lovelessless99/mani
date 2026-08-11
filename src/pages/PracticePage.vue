@@ -10,6 +10,9 @@
       <AppSpinner :size="34" />
     </div>
 
+    <!-- 農曆七月 · 孝親報恩(整月鼓勵誦地藏經 + 報父母恩咒) -->
+    <GhostMonthTasks v-if="!progressStore.loading" />
+
     <!-- 今日功課籤 — a deck of task cards, drawn once a day and sized by rank -->
     <section
       v-if="!progressStore.loading && dailyItems.length"
@@ -280,6 +283,7 @@ import AppSheet from 'src/components/ui/AppSheet.vue'
 import FillBlankDrill from 'src/components/practice/FillBlankDrill.vue'
 import SutraCompleteCeremony from 'src/components/practice/SutraCompleteCeremony.vue'
 import CardDrawBurst from 'src/components/practice/CardDrawBurst.vue'
+import GhostMonthTasks from 'src/components/practice/GhostMonthTasks.vue'
 import UnlockCeremony from 'src/components/gems/UnlockCeremony.vue'
 import { useProgressStore } from 'src/stores/progressStore'
 import { useGemStore } from 'src/stores/gemStore'

@@ -2,6 +2,7 @@ import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import { getDocData, setDocData } from 'src/services/dataAccess'
 import { useProgressStore } from './progressStore'
+import { useChantStore } from './chantStore'
 import { getAllSutras } from 'src/services/sutraService'
 
 /**
@@ -19,17 +20,18 @@ const ID = 'merit'
 
 export const useMeritStore = defineStore('merit', () => {
   const progress = useProgressStore()
+  const chant = useChantStore()
   const spent = ref(0)
   const loaded = ref(false)
 
-  // One 功德 per 遍 — reciting and memorising both count.
+  // One 功德 per 遍 — reciting, memorising, and 持咒/念佛 all count.
   const earned = computed(() => {
     let n = 0
     for (const s of getAllSutras()) {
       const vols = progress.progressMap[s.id]?.volumes ?? {}
       for (const vp of Object.values(vols)) n += vp.count
     }
-    return n
+    return n + chant.grandTotal
   })
 
   const balance = computed(() => Math.max(0, earned.value - spent.value))
