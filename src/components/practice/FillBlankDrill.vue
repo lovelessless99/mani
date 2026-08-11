@@ -167,6 +167,46 @@
         </div>
       </template>
 
+      <!-- ══ 漸隱 ══════════════════════════════════ -->
+      <template v-else-if="game === 'fade'">
+        <div v-if="!fadeLines.length" class="drill__empty empty">此段落太短,換一種練習</div>
+        <template v-else>
+          <div class="chapter-tag">
+            <p class="chapter-tag__name">出自〈{{ activeChapter?.name }}〉</p>
+            <p v-if="activeChapter?.gist" class="chapter-tag__gist">{{ activeChapter.gist }}</p>
+          </div>
+
+          <div class="progress">
+            <div class="progress__bar">
+              <div class="progress__fill" :style="{ width: `${(fadeStep / (FADE_STEPS.length - 1)) * 100}%` }" />
+            </div>
+            <span class="progress__num tnum">隱 {{ fadeHiddenCount }} / {{ fadeLines.length }}</span>
+          </div>
+
+          <div class="fade t-serif">
+            <p class="fade__hint">憑記憶把淡去的句子誦出來 · 點一句可偷看</p>
+            <p
+              v-for="(ln, i) in fadeLines"
+              :key="i"
+              class="fade__line"
+              :class="{ 'fade__line--gone': isFaded(i), 'fade__line--peek': peeked.has(i) }"
+              @click="peek(i)"
+            >
+              <template v-if="isFaded(i)">{{ '　'.repeat(ln.length) }}</template>
+              <template v-else>{{ ln }}</template>
+            </p>
+          </div>
+
+          <div class="drill__actions">
+            <AppButton v-if="!fadeDone" variant="accent" block @click="fadeDeeper">淡出一層 · 再隱去一些</AppButton>
+            <template v-else>
+              <p class="verdict verdict--right">全篇隱去 ✦ 憑記憶誦一遍</p>
+              <AppButton variant="glass" block @click="fadeFinish">背完了 ＋1 · 下一段 →</AppButton>
+            </template>
+          </div>
+        </template>
+      </template>
+
       <p v-if="source && hasContent" class="drill__source">{{ source }}</p>
 
       <!-- Drag ghost -->
@@ -219,10 +259,11 @@ const emit = defineEmits<{ close: []; solved: [chapterId: string] }>()
 // always knows where in the sutra they are.
 const activeChapter = ref<Section | null>(null)
 
-type Game = 'blank' | 'chain'
+type Game = 'blank' | 'chain' | 'fade'
 const GAMES: { id: Game; label: string }[] = [
   { id: 'blank', label: '填空' },
   { id: 'chain', label: '接龍' },
+  { id: 'fade', label: '漸隱' },
 ]
 const LEVELS = [
   { ratio: 0.5, label: '挖一半' },
@@ -233,6 +274,8 @@ const WINS = ['善哉 ✨', '一字不差 🌟', '功不唐捐 🌸', '了了分
 const TARGET_PHRASES = 12
 const CHAIN_LEN = 5
 const MAX_HINTS = 3
+const FADE_LEN = 8
+const FADE_STEPS = [0, 0.34, 0.67, 1]
 
 // Every mark is a separator, quotation marks and brackets included.
 const SPLIT = /[，、；：。！？「」『』（）〔〕《》〈〉—―…・﹁﹂·]/
@@ -582,10 +625,68 @@ function pickChain(opt: string) {
   }
 }
 
+// ── 漸隱 state ──────────────────────────────────
+// A passage fades away layer by layer; recite it from memory, tapping a line
+// to peek if stuck. When all is gone, one clean recitation solves it.
+const fadeLines = ref<string[]>([])
+const fadeOrder = ref<number[]>([])
+const fadeStep = ref(0)
+const peeked = ref<Set<number>>(new Set())
+const fadeHiddenCount = computed(() => Math.round(FADE_STEPS[fadeStep.value] * fadeLines.value.length))
+const fadeDone = computed(() => fadeStep.value >= FADE_STEPS.length - 1)
+
+function isFaded(i: number): boolean {
+  const rank = fadeOrder.value.indexOf(i)
+  return rank > -1 && rank < fadeHiddenCount.value && !peeked.value.has(i)
+}
+function buildFade() {
+  fadeStep.value = 0
+  peeked.value = new Set()
+  const long = usableSections.value.filter(
+    (sec) =>
+      sec.paragraphs.flatMap((p) => p.split(SPLIT)).filter((s) => s.trim().length >= 2).length >= 4
+  )
+  const pool = long.length ? long : usableSections.value
+  if (!pool.length) {
+    fadeLines.value = []
+    return
+  }
+  const section = pool[Math.floor(Math.random() * pool.length)]
+  activeChapter.value = section
+  const phrases = section.paragraphs.flatMap((p) =>
+    p.split(SPLIT).map((s) => s.trim()).filter((s) => s.length >= 2)
+  )
+  if (phrases.length < 4) {
+    fadeLines.value = []
+    return
+  }
+  const start = Math.floor(Math.random() * Math.max(1, phrases.length - FADE_LEN))
+  fadeLines.value = phrases.slice(start, start + FADE_LEN)
+  fadeOrder.value = shuffle(fadeLines.value.map((_, i) => i))
+}
+function peek(i: number) {
+  const s = new Set(peeked.value)
+  if (s.has(i)) s.delete(i)
+  else s.add(i)
+  peeked.value = s
+}
+function fadeDeeper() {
+  if (fadeDone.value) return
+  fadeStep.value += 1
+  peeked.value = new Set()
+}
+function fadeFinish() {
+  correctCount.value += 1
+  verdictWin.value = WINS[Math.floor(Math.random() * WINS.length)]
+  emit('solved', activeChapter.value?.id ?? '')
+  next()
+}
+
 // ── flow ────────────────────────────────────────
 function build() {
   if (game.value === 'blank') buildBlank()
-  else buildChain()
+  else if (game.value === 'chain') buildChain()
+  else buildFade()
 }
 function next() {
   round.value += 1
@@ -940,6 +1041,38 @@ onBeforeUnmount(() => {
   0%, 100% { transform: translateX(0); }
   25% { transform: translateX(-6px); }
   75% { transform: translateX(6px); }
+}
+
+/* — 漸隱 —————————————————————————————————————— */
+.fade {
+  flex: 1;
+  overflow-y: auto;
+  padding: var(--s5);
+  font-size: 1.2rem;
+  line-height: 2.5;
+  letter-spacing: 0.06em;
+}
+.fade__hint {
+  font-family: var(--font-sans);
+  font-size: var(--text-caption);
+  color: var(--text-faint);
+  letter-spacing: 0.1em;
+  margin-bottom: var(--s3);
+}
+.fade__line {
+  padding: 1px var(--s2);
+  border-radius: var(--r-sm);
+  color: var(--text-dim);
+  cursor: pointer;
+  transition: color var(--base) var(--ease), background var(--fast) var(--ease);
+}
+.fade__line--gone {
+  color: transparent;
+  border-bottom: 1px dashed rgba(167, 139, 250, 0.4);
+}
+.fade__line--peek {
+  color: var(--amber);
+  background: rgba(251, 191, 36, 0.08);
 }
 
 /* — Actions —————————————————————————————————— */
