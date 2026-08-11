@@ -1,7 +1,16 @@
 <template>
   <main class="ded">
-    <!-- A living river of every lamp lit — drag to look across it -->
-    <div class="ded__river"><LanternRiver :lamps="store.history" :newest-id="store.latest?.id" /></div>
+    <!-- A living river of every lamp lit — drag to look 360°, tap a light -->
+    <div class="ded__river"><LanternRiver :lamps="store.history" :selected-id="selectedId" @select="onSelectLamp" /></div>
+
+    <!-- Tapped-lamp card -->
+    <Transition name="fade">
+      <div v-if="selectedLamp" class="ded__card" @click="selectedId = ''">
+        <p class="ded__card-eyebrow">迴向</p>
+        <p class="ded__card-target">{{ selectedLamp.targetName }}</p>
+        <p class="ded__card-meta tnum">{{ selectedLamp.merit }} 功德 · {{ fmtDate(selectedLamp.dedicatedAt) }}</p>
+      </div>
+    </Transition>
 
     <!-- Overlay HUD (does not block dragging the river) -->
     <div class="ded__hud">
@@ -168,6 +177,20 @@ async function onClearVow() {
 }
 
 const sheetOpen = ref(false)
+
+// Tapping a light on the river reveals whose lamp it is.
+const selectedId = ref('')
+const selectedLamp = computed(() => store.history.find((r) => r.id === selectedId.value) ?? null)
+let selTimer: ReturnType<typeof setTimeout> | undefined
+function onSelectLamp(id: string) {
+  selectedId.value = id
+  clearTimeout(selTimer)
+  selTimer = setTimeout(() => (selectedId.value = ''), 4500)
+}
+function fmtDate(iso: string): string {
+  return new Date(iso).toLocaleDateString('zh-TW', { month: 'long', day: 'numeric' })
+}
+
 const verseId = ref(verses[0].id)
 const targetId = ref(targets[0].id)
 const customTarget = ref('')
@@ -524,6 +547,40 @@ onMounted(async () => {
 }
 .ded__light:active {
   transform: scale(0.97);
+}
+
+/* Tapped-lamp card */
+.ded__card {
+  position: absolute;
+  z-index: 2;
+  top: 28%;
+  left: 50%;
+  transform: translateX(-50%);
+  min-width: 12rem;
+  padding: var(--s3) var(--s5);
+  border-radius: var(--r-lg);
+  text-align: center;
+  background: rgba(16, 20, 34, 0.72);
+  backdrop-filter: blur(var(--blur-heavy));
+  -webkit-backdrop-filter: blur(var(--blur-heavy));
+  border: 1px solid rgba(251, 191, 36, 0.35);
+  box-shadow: var(--shadow-3);
+}
+.ded__card-eyebrow {
+  font-size: var(--text-micro);
+  letter-spacing: 0.24em;
+  color: var(--amber);
+}
+.ded__card-target {
+  margin-top: var(--s1);
+  font-family: var(--font-serif);
+  font-size: var(--text-title);
+  letter-spacing: 0.06em;
+}
+.ded__card-meta {
+  margin-top: var(--s2);
+  font-size: var(--text-micro);
+  color: var(--text-faint);
 }
 
 .vow--sheet {
