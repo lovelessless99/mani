@@ -316,6 +316,82 @@
         </template>
       </template>
 
+      <!-- ══ 限時挑戰 ══════════════════════════════ -->
+      <template v-else-if="game === 'timed'">
+        <div class="tc-bar">
+          <span class="tc-score tnum">得分 {{ tcScore }}</span>
+          <div class="tc-time" :class="{ 'tc-time--low': tcTime <= 10 }">
+            <div class="tc-time__fill" :style="{ width: `${(tcTime / 60) * 100}%` }" />
+          </div>
+          <span class="tc-secs tnum">{{ tcTime }}s</span>
+        </div>
+
+        <template v-if="tcRunning">
+          <div class="tc-seed t-serif">{{ tcSeed }}</div>
+          <div class="tc-arrow">↓ 接下一句</div>
+          <div class="tc-opts">
+            <button
+              v-for="(opt, i) in tcOptions"
+              :key="i"
+              class="opt t-serif"
+              :class="{ 'opt--wrong': tcWrong === opt }"
+              type="button"
+              @click="tcPick(opt)"
+            >
+              {{ opt }}
+            </button>
+          </div>
+        </template>
+        <div v-else class="tc-end">
+          <p class="tc-end__score tnum">{{ tcScore }}</p>
+          <p class="tc-end__label">句 · 時間到</p>
+          <AppButton variant="accent" block class="tc-end__again" @click="buildTimed">再挑戰 ↻</AppButton>
+        </div>
+      </template>
+
+      <!-- ══ 配對連連看 ════════════════════════════ -->
+      <template v-else-if="game === 'match'">
+        <div v-if="!mpLeft.length" class="drill__empty empty">此段落太短,換一種練習</div>
+        <template v-else>
+          <div class="chapter-tag">
+            <p class="chapter-tag__name">出自〈{{ activeChapter?.name }}〉</p>
+          </div>
+          <p class="mp-tip">左右各點一個,連成完整的句子</p>
+          <div class="mp">
+            <div class="mp-col">
+              <button
+                v-for="h in mpLeft"
+                :key="h.pid"
+                class="mp-tile t-serif"
+                :class="{ 'mp-tile--sel': mpSelLeft === h.pid, 'mp-tile--done': mpMatched.has(h.pid), 'mp-tile--wrong': mpWrong.has(h.pid) }"
+                type="button"
+                :disabled="mpMatched.has(h.pid)"
+                @click="mpTapLeft(h.pid)"
+              >
+                {{ h.text }}
+              </button>
+            </div>
+            <div class="mp-col">
+              <button
+                v-for="h in mpRight"
+                :key="h.pid"
+                class="mp-tile t-serif"
+                :class="{ 'mp-tile--sel': mpSelRight === h.pid, 'mp-tile--done': mpMatched.has(h.pid), 'mp-tile--wrong': mpWrong.has(h.pid) }"
+                type="button"
+                :disabled="mpMatched.has(h.pid)"
+                @click="mpTapRight(h.pid)"
+              >
+                {{ h.text }}
+              </button>
+            </div>
+          </div>
+          <div v-if="mpDone" class="drill__actions">
+            <p class="verdict verdict--right">{{ verdictWin }}</p>
+            <AppButton variant="glass" block @click="next">下一題 →</AppButton>
+          </div>
+        </template>
+      </template>
+
       <p v-if="source && hasContent" class="drill__source">{{ source }}</p>
 
       <!-- Drag ghost -->
@@ -368,7 +444,7 @@ const emit = defineEmits<{ close: []; solved: [chapterId: string] }>()
 // always knows where in the sutra they are.
 const activeChapter = ref<Section | null>(null)
 
-type Game = 'blank' | 'chain' | 'fade' | 'recall' | 'scramble' | 'order'
+type Game = 'blank' | 'chain' | 'fade' | 'recall' | 'scramble' | 'order' | 'timed' | 'match'
 const GAMES: { id: Game; label: string }[] = [
   { id: 'blank', label: '填空' },
   { id: 'chain', label: '接龍' },
@@ -376,6 +452,8 @@ const GAMES: { id: Game; label: string }[] = [
   { id: 'recall', label: '默背' },
   { id: 'scramble', label: '重組' },
   { id: 'order', label: '排序' },
+  { id: 'timed', label: '限時' },
+  { id: 'match', label: '配對' },
 ]
 const LEVELS = [
   { ratio: 0.5, label: '挖一半' },
@@ -951,6 +1029,149 @@ function roCheck() {
   }
 }
 
+// ── 限時挑戰 state ──────────────────────────────
+// A countdown over rapid 接龍 questions — pick the next line, build a combo,
+// race the clock. A wrong pick costs a few seconds.
+const TIMED_SECS = 60
+const tcTime = ref(TIMED_SECS)
+const tcScore = ref(0)
+const tcSeed = ref('')
+const tcOptions = ref<string[]>([])
+const tcAnswer = ref('')
+const tcWrong = ref('')
+const tcRunning = ref(false)
+let tcTimer: ReturnType<typeof setInterval> | undefined
+
+function stopTimer() {
+  clearInterval(tcTimer)
+  tcTimer = undefined
+}
+function tcNextQuestion() {
+  const long = usableSections.value.filter(
+    (sec) =>
+      sec.paragraphs.flatMap((p) => p.split(SPLIT)).filter((s) => s.trim().length >= 2).length >= 2
+  )
+  const pool = long.length ? long : usableSections.value
+  if (!pool.length) return
+  const section = pool[Math.floor(Math.random() * pool.length)]
+  const phrases = section.paragraphs.flatMap((p) =>
+    p.split(SPLIT).map((s) => s.trim()).filter((s) => s.length >= 2)
+  )
+  if (phrases.length < 2) return
+  const i = Math.floor(Math.random() * (phrases.length - 1))
+  tcSeed.value = phrases[i]
+  tcAnswer.value = phrases[i + 1]
+  activeChapter.value = section
+  const others = shuffle(allPhrases.value.filter((p) => p !== tcAnswer.value && p !== tcSeed.value)).slice(0, 3)
+  tcOptions.value = shuffle([tcAnswer.value, ...others])
+  tcWrong.value = ''
+}
+function buildTimed() {
+  stopTimer()
+  tcScore.value = 0
+  tcTime.value = TIMED_SECS
+  tcRunning.value = true
+  tcNextQuestion()
+  tcTimer = setInterval(() => {
+    tcTime.value -= 1
+    if (tcTime.value <= 0) {
+      tcTime.value = 0
+      stopTimer()
+      tcRunning.value = false
+      if (tcScore.value >= 1) {
+        correctCount.value += tcScore.value
+        emit('solved', activeChapter.value?.id ?? '')
+      }
+    }
+  }, 1000)
+}
+function tcPick(opt: string) {
+  if (!tcRunning.value) return
+  if (opt === tcAnswer.value) {
+    tcScore.value += 1
+    tcNextQuestion()
+  } else {
+    tcWrong.value = opt
+    tcTime.value = Math.max(0, tcTime.value - 3)
+    setTimeout(() => (tcWrong.value = ''), 500)
+  }
+}
+
+// ── 配對連連看 state ────────────────────────────
+// Left column: first halves; right: second halves. Pair them up.
+interface Half {
+  pid: number
+  text: string
+}
+const mpLeft = ref<Half[]>([])
+const mpRight = ref<Half[]>([])
+const mpMatched = ref<Set<number>>(new Set())
+const mpSelLeft = ref<number | null>(null)
+const mpSelRight = ref<number | null>(null)
+const mpWrong = ref<Set<number>>(new Set())
+const mpDone = computed(() => mpLeft.value.length > 0 && mpMatched.value.size === mpLeft.value.length)
+function buildMatch() {
+  mpMatched.value = new Set()
+  mpSelLeft.value = null
+  mpSelRight.value = null
+  mpWrong.value = new Set()
+  const secs = usableSections.value
+  if (!secs.length) {
+    mpLeft.value = []
+    mpRight.value = []
+    return
+  }
+  const section = secs[Math.floor(Math.random() * secs.length)]
+  activeChapter.value = section
+  const phrases = section.paragraphs
+    .flatMap((p) => p.split(SPLIT).map((s) => s.trim()))
+    .filter((s) => s.length >= 4)
+  if (phrases.length < 3) {
+    mpLeft.value = []
+    mpRight.value = []
+    return
+  }
+  const chosen = shuffle(phrases).slice(0, Math.min(4, phrases.length))
+  const pairs = chosen.map((ph, i) => {
+    const mid = Math.ceil([...ph].length / 2)
+    return { pid: i, a: [...ph].slice(0, mid).join(''), b: [...ph].slice(mid).join('') }
+  })
+  mpLeft.value = shuffle(pairs.map((p) => ({ pid: p.pid, text: p.a })))
+  mpRight.value = shuffle(pairs.map((p) => ({ pid: p.pid, text: p.b })))
+}
+function mpTapLeft(pid: number) {
+  if (mpMatched.value.has(pid)) return
+  mpSelLeft.value = mpSelLeft.value === pid ? null : pid
+  mpResolve()
+}
+function mpTapRight(pid: number) {
+  if (mpMatched.value.has(pid)) return
+  mpSelRight.value = mpSelRight.value === pid ? null : pid
+  mpResolve()
+}
+function mpResolve() {
+  const l = mpSelLeft.value
+  const r = mpSelRight.value
+  if (l == null || r == null) return
+  if (l === r) {
+    mpMatched.value = new Set([...mpMatched.value, l])
+    mpSelLeft.value = null
+    mpSelRight.value = null
+    if (mpDone.value) {
+      correctCount.value += 1
+      verdictWin.value = WINS[Math.floor(Math.random() * WINS.length)]
+      emit('solved', activeChapter.value?.id ?? '')
+    }
+  } else {
+    mpWrong.value = new Set([l, r])
+    setTimeout(() => {
+      mpWrong.value = new Set()
+      mpSelLeft.value = null
+      mpSelRight.value = null
+    }, 550)
+  }
+}
+
 // ── flow ────────────────────────────────────────
 function build() {
   if (game.value === 'blank') buildBlank()
@@ -958,7 +1179,9 @@ function build() {
   else if (game.value === 'fade') buildFade()
   else if (game.value === 'recall') buildRecall()
   else if (game.value === 'scramble') buildScramble()
-  else buildOrder()
+  else if (game.value === 'order') buildOrder()
+  else if (game.value === 'timed') buildTimed()
+  else buildMatch()
 }
 function next() {
   round.value += 1
@@ -967,6 +1190,7 @@ function next() {
 }
 function setGame(g: Game) {
   if (game.value === g) return
+  stopTimer() // leaving 限時 — never let its clock keep ticking
   game.value = g
   build()
 }
@@ -978,6 +1202,7 @@ function setLevel(r: number) {
 
 build()
 onBeforeUnmount(() => {
+  stopTimer()
   window.removeEventListener('pointermove', onDragMove)
   window.removeEventListener('pointerup', onDragUp)
 })
@@ -1542,6 +1767,144 @@ onBeforeUnmount(() => {
 }
 .ro__opt:active {
   transform: scale(0.99);
+}
+
+/* — 限時挑戰 —————————————————————————————————— */
+.tc-bar {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: var(--s3);
+  padding: 0 var(--s5) var(--s3);
+}
+.tc-score {
+  flex-shrink: 0;
+  font-size: var(--text-caption);
+  color: var(--amber);
+}
+.tc-secs {
+  flex-shrink: 0;
+  font-size: var(--text-caption);
+  color: var(--text-dim);
+}
+.tc-time {
+  flex: 1;
+  height: 6px;
+  border-radius: var(--r-full);
+  background: rgba(255, 255, 255, 0.08);
+  overflow: hidden;
+}
+.tc-time__fill {
+  height: 100%;
+  border-radius: var(--r-full);
+  background: linear-gradient(90deg, var(--emerald), var(--sapphire));
+  transition: width 1s linear;
+}
+.tc-time--low .tc-time__fill {
+  background: linear-gradient(90deg, #fb7185, #f43f5e);
+}
+.tc-seed {
+  flex-shrink: 0;
+  margin: var(--s3) var(--s5) 0;
+  padding: var(--s4);
+  border-radius: var(--r-md);
+  text-align: center;
+  font-size: 1.25rem;
+  letter-spacing: 0.06em;
+  color: #fff;
+  background: rgba(96, 165, 250, 0.14);
+  border-left: 2px solid var(--sapphire);
+}
+.tc-arrow {
+  flex-shrink: 0;
+  text-align: center;
+  font-family: var(--font-sans);
+  font-size: var(--text-micro);
+  color: var(--text-faint);
+  padding: var(--s2) 0;
+}
+.tc-opts {
+  flex: 1;
+  overflow-y: auto;
+  display: grid;
+  gap: var(--s2);
+  align-content: start;
+  padding: 0 var(--s4) var(--s4);
+}
+.tc-opts .opt {
+  padding: var(--s3) var(--s4);
+}
+.tc-end {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--s2);
+  padding: var(--s5);
+}
+.tc-end__score {
+  font-size: 4rem;
+  font-weight: 200;
+  line-height: 1;
+  color: var(--amber);
+}
+.tc-end__label {
+  font-size: var(--text-caption);
+  letter-spacing: 0.14em;
+  color: var(--text-faint);
+}
+.tc-end__again {
+  margin-top: var(--s4);
+  width: min(20rem, 80%);
+}
+
+/* — 配對連連看 —————————————————————————————————— */
+.mp-tip {
+  flex-shrink: 0;
+  padding: 0 var(--s5) var(--s3);
+  font-family: var(--font-sans);
+  font-size: var(--text-caption);
+  color: var(--text-faint);
+  letter-spacing: 0.1em;
+}
+.mp {
+  flex: 1;
+  overflow-y: auto;
+  display: flex;
+  gap: var(--s3);
+  padding: 0 var(--s4) var(--s4);
+}
+.mp-col {
+  flex: 1;
+  min-width: 0;
+  display: grid;
+  gap: var(--s2);
+  align-content: start;
+}
+.mp-tile {
+  padding: var(--s3);
+  border-radius: var(--r-md);
+  font-size: 1.1rem;
+  letter-spacing: 0.04em;
+  color: var(--text);
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--hairline-strong);
+  transition: background var(--fast) var(--ease), border-color var(--fast) var(--ease), transform var(--fast) var(--ease);
+}
+.mp-tile--sel {
+  background: rgba(167, 139, 250, 0.24);
+  border-color: var(--amethyst);
+}
+.mp-tile--done {
+  background: rgba(52, 211, 153, 0.16);
+  border-color: rgba(52, 211, 153, 0.5);
+  opacity: 0.7;
+}
+.mp-tile--wrong {
+  background: rgba(251, 113, 133, 0.2);
+  border-color: rgba(251, 113, 133, 0.7);
+  animation: shake 0.4s;
 }
 
 /* — Actions —————————————————————————————————— */
