@@ -243,6 +243,79 @@
         </template>
       </template>
 
+      <!-- ══ 逐字重組 ══════════════════════════════ -->
+      <template v-else-if="game === 'scramble'">
+        <div v-if="!scTarget" class="drill__empty empty">此段落太短,換一種練習</div>
+        <template v-else>
+          <div class="chapter-tag">
+            <p class="chapter-tag__name">出自〈{{ activeChapter?.name }}〉</p>
+          </div>
+          <div class="sc">
+            <p class="sc__tip">把打散的字,依序點回原句</p>
+            <div class="sc__built" :class="{ 'sc__built--right': scChecked && scRight, 'sc__built--wrong': scChecked && !scRight }">
+              <button v-for="c in scBuilt" :key="c.id" class="sc__cell t-serif" @click="scUnpick(c)">{{ c.ch }}</button>
+              <span v-if="!scBuilt.length" class="sc__ph">點下方的字…</span>
+            </div>
+            <div class="sc__tray">
+              <button v-for="c in scTray" :key="c.id" class="sc__tile t-serif" @click="scPick(c)">{{ c.ch }}</button>
+            </div>
+          </div>
+          <div class="drill__actions">
+            <template v-if="!scChecked">
+              <AppButton variant="accent" block :disabled="scTray.length > 0" @click="scCheck">
+                {{ scTray.length ? `還差 ${scTray.length} 字` : '對答案' }}
+              </AppButton>
+            </template>
+            <template v-else>
+              <p class="verdict" :class="scRight ? 'verdict--right' : 'verdict--wrong'">
+                {{ scRight ? verdictWin : `原句:${scTarget}` }}
+              </p>
+              <AppButton variant="glass" block @click="next">下一題 →</AppButton>
+            </template>
+          </div>
+        </template>
+      </template>
+
+      <!-- ══ 句序重排 ══════════════════════════════ -->
+      <template v-else-if="game === 'order'">
+        <div v-if="!roLines.length" class="drill__empty empty">此段落太短,換一種練習</div>
+        <template v-else>
+          <div class="chapter-tag">
+            <p class="chapter-tag__name">出自〈{{ activeChapter?.name }}〉</p>
+          </div>
+          <div class="ro">
+            <p class="ro__tip">依經文順序,點出正確排列</p>
+            <ol class="ro__built">
+              <li v-for="(x, i) in roBuilt" :key="x.id">
+                <button
+                  class="ro__line t-serif"
+                  :class="{ 'ro__line--right': roChecked && roLines[i] === x.s, 'ro__line--wrong': roChecked && roLines[i] !== x.s }"
+                  @click="roUnpick(x)"
+                >
+                  <b class="ro__num tnum">{{ i + 1 }}</b>{{ x.s }}
+                </button>
+              </li>
+            </ol>
+            <div v-if="roPool.length" class="ro__pool">
+              <button v-for="x in roPool" :key="x.id" class="ro__opt t-serif" @click="roPick(x)">{{ x.s }}</button>
+            </div>
+          </div>
+          <div class="drill__actions">
+            <template v-if="!roChecked">
+              <AppButton variant="accent" block :disabled="roPool.length > 0" @click="roCheck">
+                {{ roPool.length ? `還有 ${roPool.length} 句` : '對答案' }}
+              </AppButton>
+            </template>
+            <template v-else>
+              <p class="verdict" :class="roRight ? 'verdict--right' : 'verdict--wrong'">
+                {{ roRight ? verdictWin : '再看一次順序 🙏' }}
+              </p>
+              <AppButton variant="glass" block @click="next">下一題 →</AppButton>
+            </template>
+          </div>
+        </template>
+      </template>
+
       <p v-if="source && hasContent" class="drill__source">{{ source }}</p>
 
       <!-- Drag ghost -->
@@ -295,12 +368,14 @@ const emit = defineEmits<{ close: []; solved: [chapterId: string] }>()
 // always knows where in the sutra they are.
 const activeChapter = ref<Section | null>(null)
 
-type Game = 'blank' | 'chain' | 'fade' | 'recall'
+type Game = 'blank' | 'chain' | 'fade' | 'recall' | 'scramble' | 'order'
 const GAMES: { id: Game; label: string }[] = [
   { id: 'blank', label: '填空' },
   { id: 'chain', label: '接龍' },
   { id: 'fade', label: '漸隱' },
   { id: 'recall', label: '默背' },
+  { id: 'scramble', label: '重組' },
+  { id: 'order', label: '排序' },
 ]
 const LEVELS = [
   { ratio: 0.5, label: '挖一半' },
@@ -764,12 +839,126 @@ function recallFinish() {
   next()
 }
 
+// ── 逐字重組 state ──────────────────────────────
+// A line's characters are shuffled into tiles; tap them back into order.
+interface SChar {
+  id: number
+  ch: string
+}
+const scTarget = ref('')
+const scTray = ref<SChar[]>([])
+const scBuilt = ref<SChar[]>([])
+const scChecked = ref(false)
+const scRight = computed(() => scBuilt.value.map((c) => c.ch).join('') === scTarget.value)
+function buildScramble() {
+  scChecked.value = false
+  scBuilt.value = []
+  const secs = usableSections.value
+  if (!secs.length) {
+    scTarget.value = ''
+    scTray.value = []
+    return
+  }
+  const section = secs[Math.floor(Math.random() * secs.length)]
+  activeChapter.value = section
+  const phrases = section.paragraphs
+    .flatMap((p) => p.split(SPLIT).map((s) => s.trim()))
+    .filter((s) => s.length >= 3 && s.length <= 12)
+  if (!phrases.length) {
+    scTarget.value = ''
+    scTray.value = []
+    return
+  }
+  const target = phrases[Math.floor(Math.random() * phrases.length)]
+  scTarget.value = target
+  scTray.value = shuffle([...target].map((ch, i) => ({ id: i, ch })))
+}
+function scPick(t: SChar) {
+  if (scChecked.value) return
+  scTray.value = scTray.value.filter((x) => x.id !== t.id)
+  scBuilt.value = [...scBuilt.value, t]
+}
+function scUnpick(t: SChar) {
+  if (scChecked.value) return
+  scBuilt.value = scBuilt.value.filter((x) => x.id !== t.id)
+  scTray.value = [...scTray.value, t]
+}
+function scCheck() {
+  scChecked.value = true
+  if (scRight.value) {
+    correctCount.value += 1
+    verdictWin.value = WINS[Math.floor(Math.random() * WINS.length)]
+    emit('solved', activeChapter.value?.id ?? '')
+  }
+}
+
+// ── 句序重排 state ──────────────────────────────
+// Several lines shown shuffled; tap them into the sutra's own order.
+interface OLine {
+  id: number
+  s: string
+}
+const roLines = ref<string[]>([])
+const roPool = ref<OLine[]>([])
+const roBuilt = ref<OLine[]>([])
+const roChecked = ref(false)
+const roRight = computed(() => roBuilt.value.map((x) => x.s).join('|') === roLines.value.join('|'))
+function buildOrder() {
+  roChecked.value = false
+  roBuilt.value = []
+  const long = usableSections.value.filter(
+    (sec) =>
+      sec.paragraphs.flatMap((p) => p.split(SPLIT)).filter((s) => s.trim().length >= 2).length >= 4
+  )
+  const pool = long.length ? long : usableSections.value
+  if (!pool.length) {
+    roLines.value = []
+    roPool.value = []
+    return
+  }
+  const section = pool[Math.floor(Math.random() * pool.length)]
+  activeChapter.value = section
+  const phrases = section.paragraphs.flatMap((p) =>
+    p.split(SPLIT).map((s) => s.trim()).filter((s) => s.length >= 2)
+  )
+  if (phrases.length < 4) {
+    roLines.value = []
+    roPool.value = []
+    return
+  }
+  const n = Math.min(5, phrases.length)
+  const start = Math.floor(Math.random() * (phrases.length - n + 1))
+  const window = phrases.slice(start, start + n)
+  roLines.value = window
+  roPool.value = shuffle(window.map((s, i) => ({ id: i, s })))
+}
+function roPick(t: OLine) {
+  if (roChecked.value) return
+  roPool.value = roPool.value.filter((x) => x.id !== t.id)
+  roBuilt.value = [...roBuilt.value, t]
+}
+function roUnpick(t: OLine) {
+  if (roChecked.value) return
+  roBuilt.value = roBuilt.value.filter((x) => x.id !== t.id)
+  roPool.value = [...roPool.value, t]
+}
+function roCheck() {
+  roChecked.value = true
+  if (roRight.value) {
+    correctCount.value += 1
+    verdictWin.value = WINS[Math.floor(Math.random() * WINS.length)]
+    emit('solved', activeChapter.value?.id ?? '')
+  }
+}
+
 // ── flow ────────────────────────────────────────
 function build() {
   if (game.value === 'blank') buildBlank()
   else if (game.value === 'chain') buildChain()
   else if (game.value === 'fade') buildFade()
-  else buildRecall()
+  else if (game.value === 'recall') buildRecall()
+  else if (game.value === 'scramble') buildScramble()
+  else buildOrder()
 }
 function next() {
   round.value += 1
@@ -836,6 +1025,14 @@ onBeforeUnmount(() => {
   display: flex;
   gap: var(--s2);
   padding: 0 var(--s4) var(--s3);
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.drill__controls::-webkit-scrollbar {
+  display: none;
+}
+.seg {
+  flex-shrink: 0;
 }
 .seg {
   display: flex;
@@ -1192,6 +1389,159 @@ onBeforeUnmount(() => {
 .recall__rest {
   color: transparent;
   border-bottom: 1px dashed rgba(96, 165, 250, 0.35);
+}
+
+/* — 逐字重組 —————————————————————————————————— */
+.sc {
+  flex: 1;
+  overflow-y: auto;
+  padding: var(--s5);
+}
+.sc__tip {
+  font-family: var(--font-sans);
+  font-size: var(--text-caption);
+  color: var(--text-faint);
+  letter-spacing: 0.1em;
+  margin-bottom: var(--s4);
+}
+.sc__built {
+  min-height: 3.4rem;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s2);
+  padding: var(--s3);
+  border-radius: var(--r-md);
+  border: 1px dashed rgba(167, 139, 250, 0.4);
+  background: rgba(167, 139, 250, 0.05);
+}
+.sc__built--right {
+  border-color: rgba(52, 211, 153, 0.7);
+  border-style: solid;
+  background: rgba(52, 211, 153, 0.12);
+}
+.sc__built--wrong {
+  border-color: rgba(251, 113, 133, 0.7);
+  border-style: solid;
+  background: rgba(251, 113, 133, 0.1);
+}
+.sc__ph {
+  align-self: center;
+  font-family: var(--font-sans);
+  font-size: var(--text-caption);
+  color: var(--text-faint);
+}
+.sc__cell {
+  min-width: 2.2rem;
+  padding: var(--s2);
+  border-radius: var(--r-sm);
+  font-size: 1.4rem;
+  color: var(--text);
+  background: rgba(167, 139, 250, 0.18);
+  border: 1px solid rgba(167, 139, 250, 0.4);
+}
+.sc__tray {
+  margin-top: var(--s4);
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s2);
+  justify-content: center;
+}
+.sc__tile {
+  min-width: 2.4rem;
+  padding: var(--s2) var(--s3);
+  border-radius: var(--r-md);
+  font-size: 1.4rem;
+  color: var(--text);
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid var(--hairline-strong);
+  transition: transform var(--fast) var(--ease), background var(--fast) var(--ease);
+}
+.sc__tile:hover {
+  background: var(--glass-2);
+  border-color: var(--amethyst);
+  transform: translateY(-2px);
+}
+.sc__tile:active {
+  transform: scale(0.94);
+}
+
+/* — 句序重排 —————————————————————————————————— */
+.ro {
+  flex: 1;
+  overflow-y: auto;
+  padding: var(--s5);
+}
+.ro__tip {
+  font-family: var(--font-sans);
+  font-size: var(--text-caption);
+  color: var(--text-faint);
+  letter-spacing: 0.1em;
+  margin-bottom: var(--s4);
+}
+.ro__built {
+  list-style: none;
+  display: grid;
+  gap: var(--s2);
+  min-height: 2rem;
+}
+.ro__line {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: var(--s3);
+  padding: var(--s3);
+  border-radius: var(--r-md);
+  text-align: left;
+  font-size: 1.05rem;
+  letter-spacing: 0.04em;
+  color: var(--text);
+  background: rgba(167, 139, 250, 0.14);
+  border: 1px solid rgba(167, 139, 250, 0.35);
+}
+.ro__line--right {
+  background: rgba(52, 211, 153, 0.16);
+  border-color: rgba(52, 211, 153, 0.6);
+}
+.ro__line--wrong {
+  background: rgba(251, 113, 133, 0.14);
+  border-color: rgba(251, 113, 133, 0.6);
+}
+.ro__num {
+  flex-shrink: 0;
+  width: 1.6em;
+  height: 1.6em;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  font-size: var(--text-micro);
+  color: var(--amethyst);
+  background: rgba(255, 255, 255, 0.08);
+}
+.ro__pool {
+  margin-top: var(--s4);
+  padding-top: var(--s4);
+  border-top: 1px solid var(--hairline);
+  display: grid;
+  gap: var(--s2);
+}
+.ro__opt {
+  width: 100%;
+  padding: var(--s3);
+  border-radius: var(--r-md);
+  text-align: left;
+  font-size: 1.05rem;
+  letter-spacing: 0.04em;
+  color: var(--text);
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--hairline-strong);
+  transition: transform var(--fast) var(--ease), background var(--fast) var(--ease);
+}
+.ro__opt:hover {
+  background: var(--glass-2);
+  border-color: var(--amethyst);
+}
+.ro__opt:active {
+  transform: scale(0.99);
 }
 
 /* — Actions —————————————————————————————————— */
