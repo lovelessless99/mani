@@ -79,6 +79,18 @@
       </div>
     </GlassCard>
 
+    <!-- 聽法筆記 -->
+    <GlassCard class="setting setting--tight" clickable @click="router.push('/notes')">
+      <div class="row">
+        <AppIcon name="book" :size="20" class="row__icon" />
+        <div class="row__main">
+          <h2 class="row__title">聽法筆記</h2>
+          <p class="row__desc">講經影片 · 時間點標註感想 · 每日聞法打卡</p>
+        </div>
+        <AppIcon name="chevronRight" :size="18" class="row__icon" />
+      </div>
+    </GlassCard>
+
     <!-- 印刷排版經文輸出 -->
     <GlassCard class="setting setting--tight" clickable @click="router.push('/print')">
       <div class="row">
