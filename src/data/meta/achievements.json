@@ -14,5 +14,42 @@
   { "id": "streak-100", "name": "百日築基", "desc": "連續百日,道基已固", "metric": "bestStreak", "goal": 100, "tier": "gold", "glyph": "☀" },
   { "id": "round-10", "name": "十遍不倦", "desc": "圓滿任一部經十遍", "metric": "maxRounds", "goal": 10, "tier": "gold", "glyph": "◎" },
   { "id": "sutras-3", "name": "遍歷三經", "desc": "圓滿三部不同的經典", "metric": "sutrasCompleted", "goal": 3, "tier": "gold", "glyph": "卍" },
-  { "id": "gem-88", "name": "八十八佛", "desc": "集滿八十八顆寶石", "metric": "gems", "goal": 88, "tier": "gold", "glyph": "✦" }
+  { "id": "gem-88", "name": "八十八佛", "desc": "集滿八十八顆寶石", "metric": "gems", "goal": 88, "tier": "gold", "glyph": "✦" },
+
+  { "id": "recite-10", "name": "初嚐法味", "desc": "累計誦經十遍", "metric": "reciteTotal", "goal": 10, "tier": "bronze", "glyph": "☸" },
+  { "id": "recite-100", "name": "百遍成誦", "desc": "累計誦經一百遍", "metric": "reciteTotal", "goal": 100, "tier": "silver", "glyph": "☸" },
+  { "id": "recite-500", "name": "誦海泛舟", "desc": "累計誦經五百遍", "metric": "reciteTotal", "goal": 500, "tier": "gold", "glyph": "☸" },
+  { "id": "recite-1000", "name": "千遍其義自見", "desc": "累計誦經一千遍", "metric": "reciteTotal", "goal": 1000, "tier": "gold", "glyph": "☸" },
+  { "id": "recite-3000", "name": "誦經三千", "desc": "累計誦經三千遍", "metric": "reciteTotal", "goal": 3000, "tier": "gold", "glyph": "卍" },
+
+  { "id": "memorize-10", "name": "初習背經", "desc": "累計背經十遍", "metric": "memorizeTotal", "goal": 10, "tier": "bronze", "glyph": "✍" },
+  { "id": "memorize-200", "name": "背經不輟", "desc": "累計背經二百遍", "metric": "memorizeTotal", "goal": 200, "tier": "gold", "glyph": "✍" },
+  { "id": "memorize-500", "name": "熟讀成誦", "desc": "累計背經五百遍", "metric": "memorizeTotal", "goal": 500, "tier": "gold", "glyph": "✍" },
+  { "id": "master-4", "name": "漸入佳境", "desc": "背熟一品達純熟", "metric": "maxMastery", "goal": 4, "tier": "bronze", "glyph": "★" },
+  { "id": "master-24", "name": "倒背如流", "desc": "背熟一品達二十四遍", "metric": "maxMastery", "goal": 24, "tier": "gold", "glyph": "★" },
+
+  { "id": "chant-108", "name": "初持一輪", "desc": "持咒念佛累計一百零八遍", "metric": "chantTotal", "goal": 108, "tier": "bronze", "glyph": "📿" },
+  { "id": "chant-1080", "name": "持珠不斷", "desc": "持咒念佛累計一千零八十遍", "metric": "chantTotal", "goal": 1080, "tier": "silver", "glyph": "📿" },
+  { "id": "chant-10800", "name": "萬遍功深", "desc": "持咒念佛累計一萬八百遍", "metric": "chantTotal", "goal": 10800, "tier": "gold", "glyph": "📿" },
+  { "id": "chant-108000", "name": "十萬遍圓成", "desc": "持咒念佛累計十萬八千遍", "metric": "chantTotal", "goal": 108000, "tier": "gold", "glyph": "🪷" },
+  { "id": "chant-rounds-10", "name": "念珠十輪", "desc": "持咒念佛圓滿十輪", "metric": "chantRounds", "goal": 10, "tier": "silver", "glyph": "◍" },
+  { "id": "chant-rounds-100", "name": "百輪圓滿", "desc": "持咒念佛圓滿一百輪", "metric": "chantRounds", "goal": 100, "tier": "gold", "glyph": "◍" },
+
+  { "id": "dedicate-50", "name": "常行迴向", "desc": "迴向功德五十次", "metric": "dedications", "goal": 50, "tier": "gold", "glyph": "❁" },
+  { "id": "dedicate-108", "name": "迴向百八", "desc": "點亮一百零八顆迴向星", "metric": "dedications", "goal": 108, "tier": "gold", "glyph": "✧" },
+  { "id": "merit-1000", "name": "功德千累", "desc": "共迴向功德一千", "metric": "dedicatedMerit", "goal": 1000, "tier": "silver", "glyph": "✨" },
+  { "id": "merit-10000", "name": "功德如海", "desc": "共迴向功德一萬", "metric": "dedicatedMerit", "goal": 10000, "tier": "gold", "glyph": "✨" },
+
+  { "id": "listen-1", "name": "初聞法音", "desc": "記下第一則聽法筆記", "metric": "talks", "goal": 1, "tier": "bronze", "glyph": "🎧" },
+  { "id": "listen-10", "name": "多聞熏習", "desc": "累積十則聽法筆記", "metric": "talks", "goal": 10, "tier": "silver", "glyph": "🎧" },
+  { "id": "listen-30", "name": "深入經藏", "desc": "累積三十則聽法筆記", "metric": "talks", "goal": 30, "tier": "gold", "glyph": "🎧" },
+
+  { "id": "round-21", "name": "廿一遍純熟", "desc": "圓滿任一部經二十一遍", "metric": "maxRounds", "goal": 21, "tier": "gold", "glyph": "◎" },
+  { "id": "round-49", "name": "四十九遍圓通", "desc": "圓滿任一部經四十九遍", "metric": "maxRounds", "goal": 49, "tier": "gold", "glyph": "☯" },
+  { "id": "sutras-5", "name": "遍歷五經", "desc": "圓滿五部不同的經典", "metric": "sutrasCompleted", "goal": 5, "tier": "gold", "glyph": "卍" },
+  { "id": "sutras-7", "name": "七經圓備", "desc": "圓滿七部不同的經典", "metric": "sutrasCompleted", "goal": 7, "tier": "gold", "glyph": "卍" },
+
+  { "id": "streak-50", "name": "五十日精勤", "desc": "連續五十日不退", "metric": "streak", "goal": 50, "tier": "gold", "glyph": "🌳" },
+  { "id": "streak-100-cur", "name": "百日不退", "desc": "當前連續百日", "metric": "streak", "goal": 100, "tier": "gold", "glyph": "🪷" },
+  { "id": "streak-365", "name": "周年不斷", "desc": "連續一整年精進", "metric": "bestStreak", "goal": 365, "tier": "gold", "glyph": "☀" }
 ]

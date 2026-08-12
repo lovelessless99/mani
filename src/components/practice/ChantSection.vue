@@ -85,6 +85,7 @@
 <script setup lang="ts">
 import { ref, onMounted, onBeforeUnmount } from 'vue'
 import { useChantStore } from 'src/stores/chantStore'
+import { useAchievementStore } from 'src/stores/achievementStore'
 import { useChime } from 'src/composables/useChime'
 import { useToast } from 'src/composables/useToast'
 import chantsData from 'src/data/meta/chants.json'
@@ -103,8 +104,14 @@ const GROUPS = [
 ]
 
 const store = useChantStore()
+const achievements = useAchievementStore()
 const chime = useChime()
 const toast = useToast()
+
+// Let a milestone reached by chanting ring its medal, a beat after the bell.
+function checkMedals() {
+  setTimeout(() => achievements.check().catch(() => {}), 1200)
+}
 
 const C = 2 * Math.PI * 44 // ring circumference
 const flashId = ref('')
@@ -133,10 +140,12 @@ function celebrate(c: Chant) {
 async function tick(c: Chant) {
   const completed = await store.tick(c.id, c.target)
   if (completed) celebrate(c)
+  checkMedals()
 }
 async function finishRound(c: Chant) {
   await store.completeRound(c.id)
   celebrate(c)
+  checkMedals()
 }
 
 onMounted(() => {

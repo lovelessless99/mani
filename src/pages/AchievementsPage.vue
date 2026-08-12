@@ -34,6 +34,8 @@ import { useProgressStore } from 'src/stores/progressStore'
 import { useGemStore } from 'src/stores/gemStore'
 import { useStreakStore } from 'src/stores/streakStore'
 import { useDedicationStore } from 'src/stores/dedicationStore'
+import { useChantStore } from 'src/stores/chantStore'
+import { useNotesStore } from 'src/stores/notesStore'
 import { useToast, describeError } from 'src/composables/useToast'
 
 const store = useAchievementStore()
@@ -48,6 +50,8 @@ onMounted(async () => {
       useGemStore().loadGems(),
       useStreakStore().load(),
       useDedicationStore().loadDedications(),
+      useChantStore().load(),
+      useNotesStore().load(),
       store.load(),
     ])
   } catch (e) {

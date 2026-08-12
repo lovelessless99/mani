@@ -6,6 +6,8 @@ import { useProgressStore } from './progressStore'
 import { useGemStore } from './gemStore'
 import { useStreakStore } from './streakStore'
 import { useDedicationStore } from './dedicationStore'
+import { useChantStore } from './chantStore'
+import { useNotesStore } from './notesStore'
 import { getAllSutras } from 'src/services/sutraService'
 import chaptersData from 'src/data/meta/sutra-chapters.json'
 
@@ -25,6 +27,10 @@ export type Metric =
   | 'sutrasCompleted'
   | 'maxMastery'
   | 'dedications'
+  | 'dedicatedMerit'
+  | 'chantTotal'
+  | 'chantRounds'
+  | 'talks'
 
 export interface Achievement {
   id: string
@@ -67,6 +73,10 @@ export const useAchievementStore = defineStore('achievements', () => {
     const gems = useGemStore()
     const streak = useStreakStore()
     const dedications = useDedicationStore()
+    const chant = useChantStore()
+    const notes = useNotesStore()
+    let chantRounds = 0
+    for (const e of Object.values(chant.entries)) chantRounds += e.rounds ?? 0
 
     let reciteTotal = 0
     let memorizeTotal = 0
@@ -106,6 +116,10 @@ export const useAchievementStore = defineStore('achievements', () => {
       sutrasCompleted,
       maxMastery,
       dedications: dedications.records.length,
+      dedicatedMerit: dedications.totalGiven,
+      chantTotal: chant.grandTotal,
+      chantRounds,
+      talks: notes.notes.length,
     }
   }
 

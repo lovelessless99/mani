@@ -194,6 +194,8 @@ import { useProgressStore } from 'src/stores/progressStore'
 import { useGemStore } from 'src/stores/gemStore'
 import { useStreakStore } from 'src/stores/streakStore'
 import { useDedicationStore } from 'src/stores/dedicationStore'
+import { useChantStore } from 'src/stores/chantStore'
+import { useNotesStore } from 'src/stores/notesStore'
 import { useRouter } from 'vue-router'
 
 import { onMounted, ref } from 'vue'
@@ -226,6 +228,8 @@ onMounted(() => {
     useGemStore().loadGems(),
     useStreakStore().load(),
     useDedicationStore().loadDedications(),
+    useChantStore().load(),
+    useNotesStore().load(),
     achievements.load(),
     reading.load(),
   ]).catch(() => {})
