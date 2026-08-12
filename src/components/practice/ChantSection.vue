@@ -14,9 +14,23 @@
               </p>
               <div class="card__actions">
                 <button class="card__round" type="button" @click="finishRound(c)">＋ 一鍵圓滿一輪</button>
+                <button class="card__adjust" type="button" @click="toggleInfo(c.id)">
+                  {{ infoId === c.id ? '收起' : 'ⓘ 利益·出處' }}
+                </button>
                 <button class="card__adjust" type="button" @click="toggleEdit(c.id)">
                   {{ editingId === c.id ? '完成' : '調整' }}
                 </button>
+              </div>
+
+              <!-- 利益 · 出處 -->
+              <div v-if="infoId === c.id" class="info">
+                <template v-if="INFO[c.id]">
+                  <p class="info__label">利益</p>
+                  <p class="info__text">{{ INFO[c.id].benefit }}</p>
+                  <p class="info__label">出處</p>
+                  <p class="info__text info__src">{{ INFO[c.id].source }}</p>
+                </template>
+                <p v-else class="info__text">介紹整理中…</p>
               </div>
 
               <!-- In-place correction: fix a mis-tap or an honest over-count -->
@@ -74,6 +88,7 @@ import { useChantStore } from 'src/stores/chantStore'
 import { useChime } from 'src/composables/useChime'
 import { useToast } from 'src/composables/useToast'
 import chantsData from 'src/data/meta/chants.json'
+import chantInfo from 'src/data/meta/chant-info.json'
 
 interface Chant {
   id: string
@@ -81,6 +96,7 @@ interface Chant {
   target: number
 }
 const data = chantsData as { mantras: Chant[]; names: Chant[] }
+const INFO = chantInfo as Record<string, { benefit: string; source: string }>
 const GROUPS = [
   { key: 'mantras', title: '持咒', items: data.mantras },
   { key: 'names', title: '稱名念佛', items: data.names },
@@ -93,9 +109,13 @@ const toast = useToast()
 const C = 2 * Math.PI * 44 // ring circumference
 const flashId = ref('')
 const editingId = ref('')
+const infoId = ref('')
 
 function toggleEdit(id: string) {
   editingId.value = editingId.value === id ? '' : id
+}
+function toggleInfo(id: string) {
+  infoId.value = infoId.value === id ? '' : id
 }
 function bump(c: Chant, field: 'rounds' | 'count', delta: number) {
   const e = store.get(c.id)
@@ -208,6 +228,33 @@ onBeforeUnmount(() => {
 }
 .card__adjust:active {
   transform: scale(0.97);
+}
+
+/* — 利益 · 出處 — */
+.info {
+  margin-top: var(--s3);
+  padding-top: var(--s3);
+  border-top: 1px solid var(--hairline);
+}
+.info__label {
+  font-size: var(--text-micro);
+  letter-spacing: 0.16em;
+  color: var(--amber);
+  margin-top: var(--s2);
+}
+.info__label:first-child {
+  margin-top: 0;
+}
+.info__text {
+  margin-top: 4px;
+  font-size: var(--text-caption);
+  line-height: 1.8;
+  color: var(--text-dim);
+  letter-spacing: 0.02em;
+}
+.info__src {
+  color: var(--text-faint);
+  font-size: var(--text-micro);
 }
 
 /* — In-place correction editor — */

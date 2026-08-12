@@ -198,30 +198,40 @@
       </div>
 
       <ul class="chapters">
-        <li v-for="c in chapters" :key="c.id" class="chapter glass">
-          <div class="chapter__main">
-            <p class="chapter__name">{{ c.name }}</p>
-            <p v-if="c.part" class="chapter__part">{{ c.part }}</p>
+        <li v-for="c in chapters" :key="c.id" class="chapter chapter--vert glass">
+          <div class="chapter__row">
+            <div class="chapter__main">
+              <p class="chapter__name">{{ c.name }}</p>
+              <p v-if="c.part" class="chapter__part">{{ c.part }}</p>
+              <button class="chapter__introbtn" type="button" @click="toggleChapterInfo(c.id)">
+                {{ chapterInfoId === c.id ? '收起介紹' : 'ⓘ 這一' + (activeSutra?.unit ?? '品') + '在講什麼' }}
+              </button>
+            </div>
+
+            <div v-if="editChapters" class="chapter__edit">
+              <button class="cedit__btn" type="button" aria-label="減一遍" @click="adjustChapter(c, -1)">−</button>
+              <b class="cedit__val tnum">{{ c.count }}</b>
+              <button class="cedit__btn" type="button" aria-label="加一遍" @click="adjustChapter(c, 1)">＋</button>
+            </div>
+            <button
+              v-else
+              class="tap tap--recite"
+              :class="{ 'tap--busy': busy === c.id }"
+              type="button"
+              :disabled="busy !== null"
+              :aria-label="`${c.name} 記錄一遍`"
+              @click="record(c)"
+            >
+              <span v-if="pulse === c.id" :key="pulseKey" class="tap__ripple" />
+              <span class="tap__num tnum">{{ c.count }}</span>
+              <span class="tap__plus">＋1</span>
+            </button>
           </div>
 
-          <div v-if="editChapters" class="chapter__edit">
-            <button class="cedit__btn" type="button" aria-label="減一遍" @click="adjustChapter(c, -1)">−</button>
-            <b class="cedit__val tnum">{{ c.count }}</b>
-            <button class="cedit__btn" type="button" aria-label="加一遍" @click="adjustChapter(c, 1)">＋</button>
+          <div v-if="chapterInfoId === c.id" class="chapter__info">
+            <p class="chapter__info-text">{{ chapterSummary(c) }}</p>
+            <p v-if="guideIntro" class="chapter__info-intro">本經:{{ guideIntro }}</p>
           </div>
-          <button
-            v-else
-            class="tap tap--recite"
-            :class="{ 'tap--busy': busy === c.id }"
-            type="button"
-            :disabled="busy !== null"
-            :aria-label="`${c.name} 記錄一遍`"
-            @click="record(c)"
-          >
-            <span v-if="pulse === c.id" :key="pulseKey" class="tap__ripple" />
-            <span class="tap__num tnum">{{ c.count }}</span>
-            <span class="tap__plus">＋1</span>
-          </button>
         </li>
       </ul>
     </AppSheet>
@@ -322,6 +332,7 @@ import { useChime } from 'src/composables/useChime'
 import { useDailyTask, type DailyItem } from 'src/composables/useDailyTask'
 import { useRank } from 'src/composables/useRank'
 import chaptersData from 'src/data/meta/sutra-chapters.json'
+import scriptureGuide from 'src/data/meta/scripture-guide.json'
 import drillIndexData from 'src/data/meta/drill-index.json'
 
 type Mode = 'recite' | 'memorize'
@@ -426,7 +437,22 @@ const toast = useToast()
 
 const sheetOpen = ref(false)
 const editChapters = ref(false)
+const chapterInfoId = ref('')
 const activeId = ref('')
+
+// 每品/卷「在講什麼」——大意取自 scripture-guide,退而用章節自帶的 gist。
+interface GuideEntry {
+  intro?: string
+  chapters?: Record<string, string>
+}
+const GUIDE = scriptureGuide as unknown as Record<string, GuideEntry>
+const guideIntro = computed(() => GUIDE[activeId.value]?.intro ?? '')
+function chapterSummary(chapter: ChapterMeta): string {
+  return GUIDE[activeId.value]?.chapters?.[chapter.id] || chapter.gist || '介紹整理中…'
+}
+function toggleChapterInfo(id: string) {
+  chapterInfoId.value = chapterInfoId.value === id ? '' : id
+}
 
 // Correct a chapter's 遍數 directly — for a mis-tap or an honest fix.
 async function adjustChapter(chapter: ChapterMeta, delta: number) {
@@ -736,6 +762,7 @@ const chapters = computed(() => {
 function open(sutraId: string) {
   activeId.value = sutraId
   editChapters.value = false
+  chapterInfoId.value = ''
   sheetOpen.value = true
 }
 
@@ -1552,6 +1579,39 @@ onMounted(async () => {
   gap: var(--s3);
   padding: var(--s3) var(--s3) var(--s3) var(--s4);
   border-radius: var(--r-md);
+}
+.chapter--vert {
+  flex-direction: column;
+  align-items: stretch;
+}
+.chapter__row {
+  display: flex;
+  align-items: center;
+  gap: var(--s3);
+}
+.chapter__introbtn {
+  margin-top: var(--s2);
+  align-self: flex-start;
+  font-size: var(--text-micro);
+  letter-spacing: 0.04em;
+  color: var(--sapphire);
+}
+.chapter__info {
+  margin-top: var(--s3);
+  padding-top: var(--s3);
+  border-top: 1px solid var(--hairline);
+}
+.chapter__info-text {
+  font-size: var(--text-caption);
+  line-height: 1.8;
+  color: var(--text-dim);
+  letter-spacing: 0.02em;
+}
+.chapter__info-intro {
+  margin-top: var(--s2);
+  font-size: var(--text-micro);
+  line-height: 1.7;
+  color: var(--text-faint);
 }
 
 .chapters > .chapter + .chapter {
