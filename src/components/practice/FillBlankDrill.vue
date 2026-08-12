@@ -207,6 +207,42 @@
         </template>
       </template>
 
+      <!-- ══ 默背 ══════════════════════════════════ -->
+      <template v-else-if="game === 'recall'">
+        <div v-if="!recallLines.length" class="drill__empty empty">此段落太短,換一種練習</div>
+        <template v-else>
+          <div class="chapter-tag">
+            <p class="chapter-tag__name">出自〈{{ activeChapter?.name }}〉</p>
+            <p v-if="activeChapter?.gist" class="chapter-tag__gist">{{ activeChapter.gist }}</p>
+          </div>
+
+          <div class="recall t-serif">
+            <p class="recall__tip">只看首字,默背整段 · 點一句對照;卡住可「全部對照」</p>
+            <p
+              v-for="(ln, i) in recallLines"
+              :key="i"
+              class="recall__line"
+              :class="{ 'recall__line--shown': recallAll || recallRevealed.has(i) }"
+              @click="toggleRecall(i)"
+            >
+              <template v-if="recallAll || recallRevealed.has(i)">{{ ln }}</template>
+              <template v-else>
+                <b class="recall__first">{{ ln[0] }}</b><span class="recall__rest">{{ '　'.repeat(Math.max(0, ln.length - 1)) }}</span>
+              </template>
+            </p>
+          </div>
+
+          <div class="drill__actions">
+            <div class="act-row">
+              <button class="hint-btn" type="button" @click="recallAll = !recallAll">
+                {{ recallAll ? '收起對照' : '全部對照' }}
+              </button>
+              <AppButton variant="accent" class="act-check" @click="recallFinish">背完了 ＋1 →</AppButton>
+            </div>
+          </div>
+        </template>
+      </template>
+
       <p v-if="source && hasContent" class="drill__source">{{ source }}</p>
 
       <!-- Drag ghost -->
@@ -259,11 +295,12 @@ const emit = defineEmits<{ close: []; solved: [chapterId: string] }>()
 // always knows where in the sutra they are.
 const activeChapter = ref<Section | null>(null)
 
-type Game = 'blank' | 'chain' | 'fade'
+type Game = 'blank' | 'chain' | 'fade' | 'recall'
 const GAMES: { id: Game; label: string }[] = [
   { id: 'blank', label: '填空' },
   { id: 'chain', label: '接龍' },
   { id: 'fade', label: '漸隱' },
+  { id: 'recall', label: '默背' },
 ]
 const LEVELS = [
   { ratio: 0.5, label: '挖一半' },
@@ -276,6 +313,7 @@ const CHAIN_LEN = 5
 const MAX_HINTS = 3
 const FADE_LEN = 8
 const FADE_STEPS = [0, 0.34, 0.67, 1]
+const RECALL_LEN = 10
 
 // Every mark is a separator, quotation marks and brackets included.
 const SPLIT = /[，、；：。！？「」『』（）〔〕《》〈〉—―…・﹁﹂·]/
@@ -682,11 +720,56 @@ function fadeFinish() {
   next()
 }
 
+// ── 默背 state ──────────────────────────────────
+// Only the first character of each line shows; recite the rest from memory,
+// tap a line to check it, and reveal all when stuck. Built for long passages
+// (華嚴 and the like), where reciting a whole run is the real practice.
+const recallLines = ref<string[]>([])
+const recallRevealed = ref<Set<number>>(new Set())
+const recallAll = ref(false)
+function buildRecall() {
+  recallRevealed.value = new Set()
+  recallAll.value = false
+  const long = usableSections.value.filter(
+    (sec) =>
+      sec.paragraphs.flatMap((p) => p.split(SPLIT)).filter((s) => s.trim().length >= 2).length >= 4
+  )
+  const pool = long.length ? long : usableSections.value
+  if (!pool.length) {
+    recallLines.value = []
+    return
+  }
+  const section = pool[Math.floor(Math.random() * pool.length)]
+  activeChapter.value = section
+  const phrases = section.paragraphs.flatMap((p) =>
+    p.split(SPLIT).map((s) => s.trim()).filter((s) => s.length >= 2)
+  )
+  if (phrases.length < 4) {
+    recallLines.value = []
+    return
+  }
+  const start = Math.floor(Math.random() * Math.max(1, phrases.length - RECALL_LEN))
+  recallLines.value = phrases.slice(start, start + RECALL_LEN)
+}
+function toggleRecall(i: number) {
+  const s = new Set(recallRevealed.value)
+  if (s.has(i)) s.delete(i)
+  else s.add(i)
+  recallRevealed.value = s
+}
+function recallFinish() {
+  correctCount.value += 1
+  verdictWin.value = WINS[Math.floor(Math.random() * WINS.length)]
+  emit('solved', activeChapter.value?.id ?? '')
+  next()
+}
+
 // ── flow ────────────────────────────────────────
 function build() {
   if (game.value === 'blank') buildBlank()
   else if (game.value === 'chain') buildChain()
-  else buildFade()
+  else if (game.value === 'fade') buildFade()
+  else buildRecall()
 }
 function next() {
   round.value += 1
@@ -1073,6 +1156,42 @@ onBeforeUnmount(() => {
 .fade__line--peek {
   color: var(--amber);
   background: rgba(251, 191, 36, 0.08);
+}
+
+/* — 默背 —————————————————————————————————————— */
+.recall {
+  flex: 1;
+  overflow-y: auto;
+  padding: var(--s5);
+  font-size: 1.2rem;
+  line-height: 2.6;
+  letter-spacing: 0.06em;
+}
+.recall__tip {
+  font-family: var(--font-sans);
+  font-size: var(--text-caption);
+  color: var(--text-faint);
+  letter-spacing: 0.1em;
+  margin-bottom: var(--s3);
+}
+.recall__line {
+  padding: 1px var(--s2);
+  border-radius: var(--r-sm);
+  color: var(--text-dim);
+  cursor: pointer;
+  transition: color var(--base) var(--ease), background var(--fast) var(--ease);
+}
+.recall__line--shown {
+  color: var(--amber);
+  background: rgba(251, 191, 36, 0.07);
+}
+.recall__first {
+  color: var(--sapphire);
+  font-weight: 400;
+}
+.recall__rest {
+  color: transparent;
+  border-bottom: 1px dashed rgba(96, 165, 250, 0.35);
 }
 
 /* — Actions —————————————————————————————————— */
