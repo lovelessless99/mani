@@ -12,7 +12,28 @@
                 <template v-if="store.get(c.id).rounds"> · 已圓滿 {{ store.get(c.id).rounds }} 輪</template>
                 · 累計 {{ store.total(c.id, c.target) }} 遍
               </p>
-              <button class="card__round" type="button" @click="finishRound(c)">＋ 一鍵圓滿一輪</button>
+              <div class="card__actions">
+                <button class="card__round" type="button" @click="finishRound(c)">＋ 一鍵圓滿一輪</button>
+                <button class="card__adjust" type="button" @click="toggleEdit(c.id)">
+                  {{ editingId === c.id ? '完成' : '調整' }}
+                </button>
+              </div>
+
+              <!-- In-place correction: fix a mis-tap or an honest over-count -->
+              <div v-if="editingId === c.id" class="edit">
+                <div class="edit__row">
+                  <span class="edit__label">圓滿輪數</span>
+                  <button class="edit__btn" type="button" @click="bump(c, 'rounds', -1)">−</button>
+                  <b class="edit__val tnum">{{ store.get(c.id).rounds }}</b>
+                  <button class="edit__btn" type="button" @click="bump(c, 'rounds', 1)">＋</button>
+                </div>
+                <div class="edit__row">
+                  <span class="edit__label">本輪遍數</span>
+                  <button class="edit__btn" type="button" @click="bump(c, 'count', -1)">−</button>
+                  <b class="edit__val tnum">{{ store.get(c.id).count }}</b>
+                  <button class="edit__btn" type="button" @click="bump(c, 'count', 1)">＋</button>
+                </div>
+              </div>
             </div>
 
             <button
@@ -71,6 +92,17 @@ const toast = useToast()
 
 const C = 2 * Math.PI * 44 // ring circumference
 const flashId = ref('')
+const editingId = ref('')
+
+function toggleEdit(id: string) {
+  editingId.value = editingId.value === id ? '' : id
+}
+function bump(c: Chant, field: 'rounds' | 'count', delta: number) {
+  const e = store.get(c.id)
+  const rounds = field === 'rounds' ? e.rounds + delta : e.rounds
+  const count = field === 'count' ? e.count + delta : e.count
+  store.setEntry(c.id, count, rounds, c.target)
+}
 
 function celebrate(c: Chant) {
   chime.strike(1)
@@ -144,8 +176,12 @@ onBeforeUnmount(() => {
   color: var(--text-faint);
   line-height: 1.6;
 }
-.card__round {
+.card__actions {
   margin-top: var(--s2);
+  display: flex;
+  gap: var(--s2);
+}
+.card__round {
   padding: 4px var(--s3);
   border-radius: var(--r-full);
   font-size: var(--text-micro);
@@ -160,6 +196,57 @@ onBeforeUnmount(() => {
 }
 .card__round:active {
   transform: scale(0.97);
+}
+.card__adjust {
+  padding: 4px var(--s3);
+  border-radius: var(--r-full);
+  font-size: var(--text-micro);
+  letter-spacing: 0.06em;
+  color: var(--text-faint);
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--hairline);
+}
+.card__adjust:active {
+  transform: scale(0.97);
+}
+
+/* — In-place correction editor — */
+.edit {
+  margin-top: var(--s3);
+  padding-top: var(--s3);
+  border-top: 1px solid var(--hairline);
+  display: grid;
+  gap: var(--s2);
+}
+.edit__row {
+  display: flex;
+  align-items: center;
+  gap: var(--s2);
+}
+.edit__label {
+  flex: 1;
+  font-size: var(--text-micro);
+  color: var(--text-faint);
+}
+.edit__btn {
+  width: 28px;
+  height: 28px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  font-size: 1.1rem;
+  color: var(--text);
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--hairline);
+}
+.edit__btn:active {
+  transform: scale(0.9);
+}
+.edit__val {
+  min-width: 2.2em;
+  text-align: center;
+  font-size: var(--text-body);
+  font-weight: 300;
 }
 
 .card__undo {

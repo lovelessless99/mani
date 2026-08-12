@@ -13,12 +13,20 @@ import { ref } from 'vue'
  */
 
 const PREF = 'notify-daily'
-const REMIND_HOUR = 20 // 20:00 — an evening nudge before the day closes
+const PREF_TIME = 'notify-time'
+const DEFAULT_TIME = '20:00' // an evening nudge before the day closes
 
 const supported = typeof window !== 'undefined' && 'Notification' in window
 
 const enabled = ref(supported && safeGet(PREF) === 'on')
 const permission = ref<NotificationPermission>(supported ? Notification.permission : 'denied')
+// The hour:minute the daily reminder fires — the practitioner's own choice.
+const remindTime = ref(safeGet(PREF_TIME) || DEFAULT_TIME)
+
+function parseTime(v: string): { h: number; m: number } {
+  const [h, m] = v.split(':').map((n) => parseInt(n, 10))
+  return { h: Number.isFinite(h) ? h : 20, m: Number.isFinite(m) ? m : 0 }
+}
 
 function safeGet(k: string): string | null {
   try {
@@ -64,7 +72,8 @@ export function useNotify() {
 
     const now = new Date()
     const when = new Date(now)
-    when.setHours(REMIND_HOUR, 0, 0, 0)
+    const { h, m } = parseTime(remindTime.value)
+    when.setHours(h, m, 0, 0)
     if (when <= now) when.setDate(when.getDate() + 1)
 
     try {
@@ -113,5 +122,23 @@ export function useNotify() {
     else await enable()
   }
 
-  return { supported, enabled, permission, canScheduleWhenClosed, toggle, enable, disable, scheduleDaily }
+  /** Set the daily reminder time (HH:MM) and re-lay the schedule. */
+  async function setTime(v: string): Promise<void> {
+    remindTime.value = v || DEFAULT_TIME
+    safeSet(PREF_TIME, remindTime.value)
+    await scheduleDaily()
+  }
+
+  return {
+    supported,
+    enabled,
+    permission,
+    canScheduleWhenClosed,
+    remindTime,
+    toggle,
+    enable,
+    disable,
+    scheduleDaily,
+    setTime,
+  }
 }

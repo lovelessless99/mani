@@ -99,6 +99,14 @@ export const useChantStore = defineStore('chant', () => {
     await useStreakStore().touchToday()
   }
 
+  /** Correct a tally directly — for a mis-tap, or an honest downward fix. */
+  function setEntry(id: string, count: number, rounds: number, target: number): void {
+    const c = Math.max(0, Math.min(target - 1, Math.round(count) || 0))
+    const r = Math.max(0, Math.round(rounds) || 0)
+    entries.value = { ...entries.value, [id]: { count: c, rounds: r } }
+    persist()
+  }
+
   /** Step back one bead (undo a mis-tap). */
   function undo(id: string, target: number): void {
     const e = { ...get(id) }
@@ -111,5 +119,5 @@ export const useChantStore = defineStore('chant', () => {
     persist()
   }
 
-  return { entries, loaded, get, total, grandTotal, load, tick, completeRound, undo, flush }
+  return { entries, loaded, get, total, grandTotal, load, tick, completeRound, setEntry, undo, flush }
 })

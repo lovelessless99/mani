@@ -134,6 +134,23 @@
       </div>
     </GlassCard>
 
+    <!-- 提醒時間(開啟提醒後可設定) -->
+    <GlassCard v-if="notify.supported && notify.enabled.value" class="setting setting--tight">
+      <div class="row">
+        <AppIcon name="sparkle" :size="20" class="row__icon" />
+        <div class="row__main">
+          <h2 class="row__title">提醒時間</h2>
+          <p class="row__desc">每天此時提醒尚未圓滿的功課</p>
+        </div>
+        <input
+          type="time"
+          class="timepick"
+          :value="notify.remindTime.value"
+          @change="onSetTime"
+        />
+      </div>
+    </GlassCard>
+
     <ul class="soon">
       <li v-for="item in planned" :key="item.title">
         <GlassCard>
@@ -183,6 +200,11 @@ async function onToggleNotify() {
   if (notify.enabled.value && notify.permission.value !== 'granted') {
     toast.info('瀏覽器未允許通知,請於網站設定開啟')
   }
+}
+
+async function onSetTime(e: Event) {
+  await notify.setTime((e.target as HTMLInputElement).value)
+  toast.info(`每日提醒已設為 ${notify.remindTime.value}`)
 }
 
 // The medal count on the card needs every metric loaded.
@@ -290,6 +312,18 @@ const planned: { icon: string; title: string; desc: string }[] = []
 
 .setting--tight {
   margin-top: var(--s3);
+}
+
+.timepick {
+  flex-shrink: 0;
+  padding: 6px var(--s3);
+  border-radius: var(--r-md);
+  font-size: var(--text-caption);
+  color: var(--text);
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid var(--hairline-strong);
+  font-variant-numeric: tabular-nums;
+  color-scheme: dark;
 }
 
 .switch {
