@@ -54,6 +54,16 @@
           <span class="keeper__n tnum">已圓滿 {{ activeSet.rounds }} 部</span>
         </div>
 
+        <!-- Collected the whole set? The next 輪 gives it somewhere to go. -->
+        <div v-if="activeSet.full" class="round">
+          <div class="round__top">
+            <span class="round__label">✦ 全套圓滿 · 第 {{ activeSet.rounds }} 輪</span>
+            <span class="round__next tnum">邁向第 {{ activeSet.rounds + 1 }} 輪 · {{ activeSet.inRound }}/{{ activeSet.total }} 品</span>
+          </div>
+          <div class="round__bar"><div class="round__fill" :style="{ width: `${activeSet.nextRatio * 100}%` }" /></div>
+          <p class="round__hint">再誦一輪,護法多持一朵蓮 · 每輪都是新的目標</p>
+        </div>
+
         <AppButton
           v-if="activeSet.full"
           variant="glass"
@@ -123,19 +133,6 @@ const pureland = usePureLandStore()
 const router = useRouter()
 const toast = useToast()
 
-// 部數 (completed rounds) of a sutra = the lowest chapter tally across it —
-// one lotus is offered to its Buddha for each full pass.
-function roundsOf(sutraId: string, items: { id: string }[]): number {
-  if (!items.length) return 0
-  const vols = progressStore.progressMap[sutraId]?.volumes ?? {}
-  let lowest = Infinity
-  for (const c of items) {
-    const recite = vols[`${c.id}-recite`]?.count ?? vols[c.id]?.count ?? 0
-    const memorize = vols[`${c.id}-memorize`]?.count ?? 0
-    lowest = Math.min(lowest, recite + memorize)
-  }
-  return lowest === Infinity ? 0 : lowest
-}
 const selectedGem = ref<GemRecord | null>(null)
 const landName = computed(() => pureland.name)
 
@@ -175,6 +172,16 @@ const sets = computed(() =>
     })
 
     const got = slots.filter((x) => x.gem).length
+
+    // 部數/輪數 = the lowest chapter tally; 本輪進度 = chapters already recited
+    // once more than that floor, i.e. how far into the next 輪 you are.
+    const vols = progressStore.progressMap[s.id]?.volumes ?? {}
+    const counts = items.map(
+      (c) => (vols[`${c.id}-recite`]?.count ?? vols[c.id]?.count ?? 0) + (vols[`${c.id}-memorize`]?.count ?? 0)
+    )
+    const rounds = counts.length ? Math.min(...counts) : 0
+    const inRound = counts.filter((n) => n > rounds).length
+
     return {
       id: s.id,
       title: s.titleZh,
@@ -183,7 +190,9 @@ const sets = computed(() =>
       earned: got,
       full: items.length > 0 && got === items.length,
       ratio: items.length ? got / items.length : 0,
-      rounds: roundsOf(s.id, items), // 部數 = lotuses this sutra's Buddha holds
+      rounds, // 部數 = lotuses this sutra's Buddha holds
+      inRound, // chapters carried into the next 輪
+      nextRatio: items.length ? inRound / items.length : 0,
     }
   })
 )
@@ -453,6 +462,52 @@ onMounted(async () => {
 .keeper__n {
   font-size: var(--text-caption);
   color: var(--amber);
+}
+
+.round {
+  margin-top: var(--s3);
+  padding: var(--s3) var(--s4);
+  border-radius: var(--r-md);
+  background:
+    radial-gradient(circle at 100% 0%, rgba(167, 139, 250, 0.16), transparent 60%),
+    rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(167, 139, 250, 0.32);
+}
+.round__top {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--s3);
+  flex-wrap: wrap;
+}
+.round__label {
+  font-size: var(--text-caption);
+  letter-spacing: 0.06em;
+  color: #d6c9ff;
+}
+.round__next {
+  font-size: var(--text-micro);
+  color: var(--text-faint);
+}
+.round__bar {
+  margin-top: var(--s3);
+  height: 4px;
+  border-radius: var(--r-full);
+  background: rgba(255, 255, 255, 0.08);
+  overflow: hidden;
+}
+.round__fill {
+  height: 100%;
+  border-radius: var(--r-full);
+  background: linear-gradient(90deg, var(--amethyst), var(--sapphire));
+  box-shadow: 0 0 8px rgba(167, 139, 250, 0.7);
+  transition: width var(--slow) var(--ease-out);
+}
+.round__hint {
+  margin-top: var(--s2);
+  font-size: var(--text-micro);
+  color: var(--text-faint);
+  line-height: 1.6;
 }
 
 .summon-btn {
