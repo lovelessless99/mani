@@ -25,6 +25,10 @@
               <!-- 利益 · 出處 -->
               <div v-if="infoId === c.id" class="info">
                 <template v-if="INFO[c.id]">
+                  <template v-if="INFO[c.id].text">
+                    <p class="info__label">咒文</p>
+                    <p class="info__text info__mantra t-serif">{{ INFO[c.id].text }}</p>
+                  </template>
                   <p class="info__label">利益</p>
                   <p class="info__text">{{ INFO[c.id].benefit }}</p>
                   <p class="info__label">出處</p>
@@ -97,7 +101,7 @@ interface Chant {
   target: number
 }
 const data = chantsData as { mantras: Chant[]; names: Chant[] }
-const INFO = chantInfo as Record<string, { benefit: string; source: string }>
+const INFO = chantInfo as Record<string, { benefit: string; source: string; text?: string }>
 const GROUPS = [
   { key: 'mantras', title: '持咒', items: data.mantras },
   { key: 'names', title: '稱名念佛', items: data.names },
@@ -264,6 +268,12 @@ onBeforeUnmount(() => {
 .info__src {
   color: var(--text-faint);
   font-size: var(--text-micro);
+}
+.info__mantra {
+  font-size: 1.05rem;
+  line-height: 2;
+  color: var(--text);
+  letter-spacing: 0.06em;
 }
 
 /* — In-place correction editor — */
