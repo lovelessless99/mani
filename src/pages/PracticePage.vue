@@ -192,6 +192,9 @@
         <AppButton variant="glass" icon="book" block class="ssheet__read" @click="readSutra">
           直排注音讀經
         </AppButton>
+        <button class="ssheet__adjust" type="button" @click="editChapters = !editChapters">
+          {{ editChapters ? '✓ 完成調整' : '✎ 調整遍數(誤觸修正)' }}
+        </button>
       </div>
 
       <ul class="chapters">
@@ -201,7 +204,13 @@
             <p v-if="c.part" class="chapter__part">{{ c.part }}</p>
           </div>
 
+          <div v-if="editChapters" class="chapter__edit">
+            <button class="cedit__btn" type="button" aria-label="減一遍" @click="adjustChapter(c, -1)">−</button>
+            <b class="cedit__val tnum">{{ c.count }}</b>
+            <button class="cedit__btn" type="button" aria-label="加一遍" @click="adjustChapter(c, 1)">＋</button>
+          </div>
           <button
+            v-else
             class="tap tap--recite"
             :class="{ 'tap--busy': busy === c.id }"
             type="button"
@@ -416,7 +425,19 @@ function checkMedals(delay = 900) {
 const toast = useToast()
 
 const sheetOpen = ref(false)
+const editChapters = ref(false)
 const activeId = ref('')
+
+// Correct a chapter's 遍數 directly — for a mis-tap or an honest fix.
+async function adjustChapter(chapter: ChapterMeta, delta: number) {
+  const cur = countFor(activeId.value, chapter.id, 'recite')
+  const next = Math.max(0, cur + delta)
+  try {
+    await progressStore.setVolumeCount(activeId.value, slotKey(chapter.id, 'recite'), next)
+  } catch (e) {
+    toast.error(describeError(e))
+  }
+}
 const busy = ref<string | null>(null)
 const ALL = '__all__' // busy sentinel for the whole-sutra action
 const pulse = ref<string | null>(null)
@@ -714,6 +735,7 @@ const chapters = computed(() => {
 
 function open(sutraId: string) {
   activeId.value = sutraId
+  editChapters.value = false
   sheetOpen.value = true
 }
 
@@ -1224,6 +1246,47 @@ onMounted(async () => {
 }
 .ssheet__read {
   margin-top: var(--s3);
+}
+.ssheet__adjust {
+  margin-top: var(--s2);
+  width: 100%;
+  padding: var(--s2);
+  border-radius: var(--r-md);
+  font-size: var(--text-micro);
+  letter-spacing: 0.06em;
+  color: var(--text-faint);
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--hairline);
+}
+.ssheet__adjust:active {
+  transform: scale(0.99);
+}
+
+.chapter__edit {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: var(--s2);
+}
+.cedit__btn {
+  width: 30px;
+  height: 30px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  font-size: 1.15rem;
+  color: var(--text);
+  background: rgba(96, 165, 250, 0.12);
+  border: 1px solid rgba(96, 165, 250, 0.35);
+}
+.cedit__btn:active {
+  transform: scale(0.9);
+}
+.cedit__val {
+  min-width: 2em;
+  text-align: center;
+  font-size: 1rem;
+  font-weight: 300;
 }
 
 /* — 加分持戒 observances ——————————————————————— */

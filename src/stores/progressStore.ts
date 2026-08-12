@@ -1,7 +1,7 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
 import type { SutraProgress } from 'src/types/sutra'
-import { getProgress, recordRecitation } from 'src/services/progressService'
+import { getProgress, recordRecitation, setVolumeCount as setVolumeCountSvc } from 'src/services/progressService'
 import { getAllSutras } from 'src/services/sutraService'
 
 export const useProgressStore = defineStore('progress', () => {
@@ -35,11 +35,18 @@ export const useProgressStore = defineStore('progress', () => {
     return progressMap.value[sutraId]?.volumes?.[volumeId]?.count ?? 0
   }
 
+  async function setVolumeCount(sutraId: string, volumeId: string, count: number): Promise<void> {
+    const meta = getAllSutras().find((s) => s.id === sutraId)
+    if (!meta) return
+    const updated = await setVolumeCountSvc(sutraId, volumeId, count, meta.totalVolumes)
+    progressMap.value[sutraId] = updated
+  }
+
   function getSutraCompletionRatio(sutraId: string): number {
     const meta = getAllSutras().find((s) => s.id === sutraId)
     if (!meta || meta.totalVolumes === 0) return 0
     return (progressMap.value[sutraId]?.totalCompleted ?? 0) / meta.totalVolumes
   }
 
-  return { progressMap, loading, loadProgress, loadAllProgress, markVolumeComplete, getVolumeCount, getSutraCompletionRatio }
+  return { progressMap, loading, loadProgress, loadAllProgress, markVolumeComplete, setVolumeCount, getVolumeCount, getSutraCompletionRatio }
 })
