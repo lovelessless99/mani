@@ -65,18 +65,6 @@
       </div>
     </GlassCard>
 
-    <!-- 持咒念佛 -->
-    <GlassCard class="setting setting--tight" clickable @click="router.push('/chant')">
-      <div class="row">
-        <AppIcon name="sparkle" :size="20" class="row__icon" />
-        <div class="row__main">
-          <h2 class="row__title">持咒 · 念佛</h2>
-          <p class="row__desc">念珠計數 · 大悲咒、往生咒、佛菩薩名號 108 遍</p>
-        </div>
-        <AppIcon name="chevronRight" :size="18" class="row__icon" />
-      </div>
-    </GlassCard>
-
     <!-- 讀經 -->
     <GlassCard class="setting setting--tight" clickable @click="router.push('/library')">
       <div class="row">

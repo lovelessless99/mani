@@ -110,6 +110,19 @@
       </div>
     </GlassCard>
 
+    <!-- 持咒 · 念佛(整合於功課頁,可展開) -->
+    <GlassCard v-if="!progressStore.loading" class="memo" clickable @click="chantOpen = !chantOpen">
+      <div class="memo__row">
+        <AppIcon name="sparkle" :size="20" class="memo__icon" />
+        <div class="memo__main">
+          <h2 class="memo__title">持咒 · 念佛</h2>
+          <p class="memo__sub">念珠計數 · 大悲咒、往生咒、佛菩薩名號 108 遍</p>
+        </div>
+        <AppIcon name="chevronRight" :size="18" class="sutra__go" :class="{ 'memo__chev--open': chantOpen }" />
+      </div>
+    </GlassCard>
+    <ChantSection v-if="!progressStore.loading && chantOpen" class="chant-embed" />
+
     <ul v-if="!progressStore.loading" class="sutras">
       <li v-for="s in sutras" :key="s.id">
         <GlassCard clickable @click="open(s.id)">
@@ -284,6 +297,7 @@ import FillBlankDrill from 'src/components/practice/FillBlankDrill.vue'
 import SutraCompleteCeremony from 'src/components/practice/SutraCompleteCeremony.vue'
 import CardDrawBurst from 'src/components/practice/CardDrawBurst.vue'
 import GhostMonthTasks from 'src/components/practice/GhostMonthTasks.vue'
+import ChantSection from 'src/components/practice/ChantSection.vue'
 import UnlockCeremony from 'src/components/gems/UnlockCeremony.vue'
 import { useProgressStore } from 'src/stores/progressStore'
 import { useGemStore } from 'src/stores/gemStore'
@@ -427,6 +441,7 @@ const drillTitle = computed(
 )
 
 const pickerOpen = ref(false)
+const chantOpen = ref(false)
 // Which sutra's ranges are being shown; empty means the sutra list.
 const rangeSutra = ref('')
 const rangeTitle = computed(
@@ -1278,6 +1293,12 @@ onMounted(async () => {
 }
 
 .memo {
+  margin-top: var(--s3);
+}
+.memo__chev--open {
+  transform: rotate(90deg);
+}
+.chant-embed {
   margin-top: var(--s3);
 }
 
